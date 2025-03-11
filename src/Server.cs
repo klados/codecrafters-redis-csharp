@@ -6,17 +6,17 @@ TcpListener server = new TcpListener(IPAddress.Any, 6379);
 server.Start();
 while (true)
 {
-    Console.WriteLine("Client connected");
     var socket = server.AcceptSocket(); // wait for client
-    Task.Run(() => handleTask(socket));
+    Console.WriteLine("Client connected");
+    Task.Run(() => HandleTask(socket));
 }
 
 
-static async Task handleTask(Socket socket)
+async Task HandleTask(Socket socket)
 {
     try
     {
-        while (true)
+        while (socket.Connected)
         {
             var buffer = new byte[1024];
             var bytesReceived = await socket.ReceiveAsync(buffer, SocketFlags.None);
@@ -26,10 +26,8 @@ static async Task handleTask(Socket socket)
                 break;
             }
 
-            byte[] pongResponse = Encoding.ASCII.GetBytes("+PONG\r\n");
-
-            await socket.SendAsync(pongResponse, SocketFlags.None);
-
+            var response = ParseRESP(buffer);
+            await socket.SendAsync(Encoding.ASCII.GetBytes(response), SocketFlags.None);
         }
     }
     catch (Exception e)
@@ -41,4 +39,28 @@ static async Task handleTask(Socket socket)
         socket.Close();
         Console.WriteLine("Client connection closed");
     }
+}
+
+
+string BuildResponse(char dataType, string response)
+{
+    return (dataType) switch
+    {
+        '+' => $"+{response}\r\n",
+        '$' => $"{dataType}{response.Length}\r\n{response}\r\n",
+        _ => throw new NotImplementedException("Unknown response type"),
+    };
+}
+
+string ParseRESP(byte[] bytes)
+{
+   var arrayStrings = Encoding.UTF8.GetString(bytes).Split("\r\n", StringSplitOptions.RemoveEmptyEntries);
+   var command = arrayStrings[2];
+
+   return command.ToUpper() switch
+   {
+       "PING" => BuildResponse('+', "PONG"),
+       "ECHO" => BuildResponse('$',  arrayStrings[4]),
+       _ => BuildResponse('+', "UNKNOWN")
+   };
 }
