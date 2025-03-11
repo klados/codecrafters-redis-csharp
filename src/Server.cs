@@ -2,6 +2,8 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 
+Dictionary<string, string> storedData = new Dictionary<string, string>();
+
 TcpListener server = new TcpListener(IPAddress.Any, 6379);
 server.Start();
 while (true)
@@ -26,7 +28,7 @@ async Task HandleTask(Socket socket)
                 break;
             }
 
-            var response = ParseRESP(buffer);
+            var response = ParseResp(buffer);
             await socket.SendAsync(Encoding.ASCII.GetBytes(response), SocketFlags.None);
         }
     }
@@ -52,15 +54,30 @@ string BuildResponse(char dataType, string response)
     };
 }
 
-string ParseRESP(byte[] bytes)
+string StoreToDictionary(string key, string data)
 {
-   var arrayStrings = Encoding.UTF8.GetString(bytes).Split("\r\n", StringSplitOptions.RemoveEmptyEntries);
-   var command = arrayStrings[2];
+    storedData.Add(key, data);
+    return BuildResponse('+', "OK");
+}
 
-   return command.ToUpper() switch
-   {
-       "PING" => BuildResponse('+', "PONG"),
-       "ECHO" => BuildResponse('$',  arrayStrings[4]),
-       _ => BuildResponse('+', "UNKNOWN")
-   };
+string RetrieveFromDictionary(string key)
+{
+    return storedData.TryGetValue(key, out string data) 
+        ? BuildResponse('$', data) 
+        : $"$-1\r\n"; // null bulk string
+}
+
+string ParseResp(byte[] bytes)
+{
+    var arrayStrings = Encoding.UTF8.GetString(bytes).Split("\r\n", StringSplitOptions.RemoveEmptyEntries);
+    var command = arrayStrings[2];
+
+    return command.ToUpper() switch
+    {
+        "PING" => BuildResponse('+', "PONG"),
+        "ECHO" => BuildResponse('$', arrayStrings[4]),
+        "SET" => StoreToDictionary(arrayStrings[4], arrayStrings[6]),
+        "GET" => RetrieveFromDictionary(arrayStrings[4]),
+        _ => BuildResponse('+', "UNKNOWN")
+    };
 }
