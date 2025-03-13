@@ -1,8 +1,9 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using codecrafters_redis.Models;
 
-Dictionary<string, string> storedData = new Dictionary<string, string>();
+Dictionary<string, DataWithTtl> storedData = new Dictionary<string, DataWithTtl>();
 
 TcpListener server = new TcpListener(IPAddress.Any, 6379);
 server.Start();
@@ -54,17 +55,26 @@ string BuildResponse(char dataType, string response)
     };
 }
 
-string StoreToDictionary(string key, string data)
+string StoreToDictionary(string key, string data, string? ttl)
 {
-    storedData.Add(key, data);
+    storedData.Add(key, new DataWithTtl()
+    {
+        strValue = data,
+        ExpiredAt = ttl == null ? null : DateTime.Now.AddMilliseconds(double.Parse(ttl))
+    });
     return BuildResponse('+', "OK");
 }
 
 string RetrieveFromDictionary(string key)
 {
-    return storedData.TryGetValue(key, out string data) 
-        ? BuildResponse('$', data) 
-        : $"$-1\r\n"; // null bulk string
+    if (!storedData.TryGetValue(key, out var data)) return $"$-1\r\n"; // null bulk string
+    if (!data.ExpiredAt.HasValue) return BuildResponse('$', data.strValue);
+    if (DateTime.Now > data.ExpiredAt)
+    {
+        storedData.Remove(key);
+        return $"$-1\r\n";
+    }
+    return BuildResponse('$', data.strValue);
 }
 
 string ParseResp(byte[] bytes)
@@ -72,11 +82,12 @@ string ParseResp(byte[] bytes)
     var arrayStrings = Encoding.UTF8.GetString(bytes).Split("\r\n", StringSplitOptions.RemoveEmptyEntries);
     var command = arrayStrings[2];
 
+    var ttl = arrayStrings.ElementAtOrDefault(8)?.ToUpper() == "PX" ? arrayStrings.ElementAtOrDefault(10) : null;
     return command.ToUpper() switch
     {
         "PING" => BuildResponse('+', "PONG"),
         "ECHO" => BuildResponse('$', arrayStrings[4]),
-        "SET" => StoreToDictionary(arrayStrings[4], arrayStrings[6]),
+        "SET" => StoreToDictionary(arrayStrings[4], arrayStrings[6], ttl),
         "GET" => RetrieveFromDictionary(arrayStrings[4]),
         _ => BuildResponse('+', "UNKNOWN")
     };
