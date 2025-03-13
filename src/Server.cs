@@ -51,12 +51,18 @@ string BuildResponse(char dataType, string response)
     {
         '+' => $"+{response}\r\n",
         '$' => $"{dataType}{response.Length}\r\n{response}\r\n",
+        '-' => $"{dataType}Err {response}\r\n",
         _ => throw new NotImplementedException("Unknown response type"),
     };
 }
 
-string StoreToDictionary(string key, string data, string? ttl)
+string StoreToDictionary(string? key, string? data, string? ttl)
 {
+    if (key == null || data == null)
+    {
+        return BuildResponse('-', "wrong number of arguments for 'set' command");
+    }
+    
     storedData.Add(key, new DataWithTtl()
     {
         strValue = data,
@@ -65,8 +71,13 @@ string StoreToDictionary(string key, string data, string? ttl)
     return BuildResponse('+', "OK");
 }
 
-string RetrieveFromDictionary(string key)
+string RetrieveFromDictionary(string? key)
 {
+    if (key == null)
+    {
+        return BuildResponse('-', "wrong number of arguments for 'get' command");
+    }
+
     if (!storedData.TryGetValue(key, out var data)) return $"$-1\r\n"; // null bulk string
     if (!data.ExpiredAt.HasValue) return BuildResponse('$', data.strValue);
     if (DateTime.Now > data.ExpiredAt)
@@ -74,6 +85,7 @@ string RetrieveFromDictionary(string key)
         storedData.Remove(key);
         return $"$-1\r\n";
     }
+
     return BuildResponse('$', data.strValue);
 }
 
@@ -81,14 +93,16 @@ string ParseResp(byte[] bytes)
 {
     var arrayStrings = Encoding.UTF8.GetString(bytes).Split("\r\n", StringSplitOptions.RemoveEmptyEntries);
     var command = arrayStrings[2];
-
+    var argumentForCommand = arrayStrings.ElementAtOrDefault(4);
     var ttl = arrayStrings.ElementAtOrDefault(8)?.ToUpper() == "PX" ? arrayStrings.ElementAtOrDefault(10) : null;
+    
     return command.ToUpper() switch
     {
         "PING" => BuildResponse('+', "PONG"),
-        "ECHO" => BuildResponse('$', arrayStrings[4]),
-        "SET" => StoreToDictionary(arrayStrings[4], arrayStrings[6], ttl),
-        "GET" => RetrieveFromDictionary(arrayStrings[4]),
+        "ECHO" => BuildResponse(argumentForCommand != null ? '$' : '-',
+            argumentForCommand ?? "wrong number of arguments for 'echo' command"),
+        "SET" => StoreToDictionary(argumentForCommand, arrayStrings.ElementAtOrDefault(6), ttl),
+        "GET" => RetrieveFromDictionary(argumentForCommand),
         _ => BuildResponse('+', "UNKNOWN")
     };
 }
