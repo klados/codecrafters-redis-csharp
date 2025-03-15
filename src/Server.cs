@@ -1,18 +1,42 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using codecrafters_redis.Commands;
+using codecrafters_redis.Helpers;
 using codecrafters_redis.Models;
+using Microsoft.Extensions.DependencyInjection;
 
 Dictionary<string, DataWithTtl> storedData = new Dictionary<string, DataWithTtl>();
 
+var serviceCollection = new ServiceCollection();
+serviceCollection.AddSingleton<Config>();
+var serviceProvider = serviceCollection.BuildServiceProvider();
+
+serviceProvider.GetRequiredKeyedService<Config>(null).ParseCommandLineArgs(args);
+
 TcpListener server = new TcpListener(IPAddress.Any, 6379);
+Console.WriteLine("Server started on port 6379");
 server.Start();
-while (true)
+
+try
 {
-    var socket = server.AcceptSocket(); // wait for client
-    Console.WriteLine("Client connected");
-    Task.Run(() => HandleTask(socket));
+    while (true)
+    {
+        var socket = server.AcceptSocket(); // wait for client
+        Console.WriteLine("Client connected");
+        Task.Run(() => HandleTask(socket));
+    }
 }
+catch (Exception e)
+{
+    Console.WriteLine($"Server error: {e.Message}");
+}
+finally
+{
+    server.Stop();
+}
+
+return;
 
 
 async Task HandleTask(Socket socket)
@@ -45,22 +69,11 @@ async Task HandleTask(Socket socket)
 }
 
 
-string BuildResponse(char dataType, string response)
-{
-    return (dataType) switch
-    {
-        '+' => $"+{response}\r\n",
-        '$' => $"{dataType}{response.Length}\r\n{response}\r\n",
-        '-' => $"{dataType}Err {response}\r\n",
-        _ => throw new NotImplementedException("Unknown response type"),
-    };
-}
-
 string StoreToDictionary(string? key, string? data, string? ttl)
 {
     if (key == null || data == null)
     {
-        return BuildResponse('-', "wrong number of arguments for 'set' command");
+        return BuildResponse.Generate('-', "wrong number of arguments for 'set' command");
     }
     
     storedData.Add(key, new DataWithTtl()
@@ -68,25 +81,25 @@ string StoreToDictionary(string? key, string? data, string? ttl)
         strValue = data,
         ExpiredAt = ttl == null ? null : DateTime.Now.AddMilliseconds(double.Parse(ttl))
     });
-    return BuildResponse('+', "OK");
+    return BuildResponse.Generate('+', "OK");
 }
 
 string RetrieveFromDictionary(string? key)
 {
     if (key == null)
     {
-        return BuildResponse('-', "wrong number of arguments for 'get' command");
+        return BuildResponse.Generate('-', "wrong number of arguments for 'get' command");
     }
 
     if (!storedData.TryGetValue(key, out var data)) return $"$-1\r\n"; // null bulk string
-    if (!data.ExpiredAt.HasValue) return BuildResponse('$', data.strValue);
+    if (!data.ExpiredAt.HasValue) return BuildResponse.Generate('$', data.strValue);
     if (DateTime.Now > data.ExpiredAt)
     {
         storedData.Remove(key);
         return $"$-1\r\n";
     }
 
-    return BuildResponse('$', data.strValue);
+    return BuildResponse.Generate('$', data.strValue);
 }
 
 string ParseResp(byte[] bytes)
@@ -98,11 +111,12 @@ string ParseResp(byte[] bytes)
     
     return command.ToUpper() switch
     {
-        "PING" => BuildResponse('+', "PONG"),
-        "ECHO" => BuildResponse(argumentForCommand != null ? '$' : '-',
+        "PING" => BuildResponse.Generate('+', "PONG"),
+        "ECHO" => BuildResponse.Generate(argumentForCommand != null ? '$' : '-',
             argumentForCommand ?? "wrong number of arguments for 'echo' command"),
         "SET" => StoreToDictionary(argumentForCommand, arrayStrings.ElementAtOrDefault(6), ttl),
         "GET" => RetrieveFromDictionary(argumentForCommand),
-        _ => BuildResponse('+', "UNKNOWN")
+        "CONFIG" => serviceProvider.GetRequiredKeyedService<Config>(null).ConfigCmd(argumentForCommand??"",arrayStrings.ElementAtOrDefault(6)??""),
+        _ => BuildResponse.Generate('+', "UNKNOWN")
     };
 }
