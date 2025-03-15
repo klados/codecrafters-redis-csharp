@@ -3,13 +3,16 @@ using System.Net.Sockets;
 using System.Text;
 using codecrafters_redis.Commands;
 using codecrafters_redis.Helpers;
-using codecrafters_redis.Models;
+using codecrafters_redis.Repositories;
+using codecrafters_redis.Repositories.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 
-Dictionary<string, DataWithTtl> storedData = new Dictionary<string, DataWithTtl>();
 
 var serviceCollection = new ServiceCollection();
 serviceCollection.AddSingleton<Config>();
+serviceCollection.AddSingleton<Set>();
+serviceCollection.AddSingleton<Get>();
+serviceCollection.AddScoped<IStoreRepository, StoreRepository>();
 var serviceProvider = serviceCollection.BuildServiceProvider();
 
 serviceProvider.GetRequiredKeyedService<Config>(null).ParseCommandLineArgs(args);
@@ -68,40 +71,6 @@ async Task HandleTask(Socket socket)
     }
 }
 
-
-string StoreToDictionary(string? key, string? data, string? ttl)
-{
-    if (key == null || data == null)
-    {
-        return BuildResponse.Generate('-', "wrong number of arguments for 'set' command");
-    }
-    
-    storedData.Add(key, new DataWithTtl()
-    {
-        strValue = data,
-        ExpiredAt = ttl == null ? null : DateTime.Now.AddMilliseconds(double.Parse(ttl))
-    });
-    return BuildResponse.Generate('+', "OK");
-}
-
-string RetrieveFromDictionary(string? key)
-{
-    if (key == null)
-    {
-        return BuildResponse.Generate('-', "wrong number of arguments for 'get' command");
-    }
-
-    if (!storedData.TryGetValue(key, out var data)) return $"$-1\r\n"; // null bulk string
-    if (!data.ExpiredAt.HasValue) return BuildResponse.Generate('$', data.strValue);
-    if (DateTime.Now > data.ExpiredAt)
-    {
-        storedData.Remove(key);
-        return $"$-1\r\n";
-    }
-
-    return BuildResponse.Generate('$', data.strValue);
-}
-
 string ParseResp(byte[] bytes)
 {
     var arrayStrings = Encoding.UTF8.GetString(bytes).Split("\r\n", StringSplitOptions.RemoveEmptyEntries);
@@ -114,8 +83,8 @@ string ParseResp(byte[] bytes)
         "PING" => BuildResponse.Generate('+', "PONG"),
         "ECHO" => BuildResponse.Generate(argumentForCommand != null ? '$' : '-',
             argumentForCommand ?? "wrong number of arguments for 'echo' command"),
-        "SET" => StoreToDictionary(argumentForCommand, arrayStrings.ElementAtOrDefault(6), ttl),
-        "GET" => RetrieveFromDictionary(argumentForCommand),
+        "SET" => serviceProvider.GetRequiredKeyedService<Set>(null).SetCommand(argumentForCommand, arrayStrings.ElementAtOrDefault(6), ttl),
+        "GET" => serviceProvider.GetRequiredKeyedService<Get>(null).GetCommand(argumentForCommand),
         "CONFIG" => serviceProvider.GetRequiredKeyedService<Config>(null).ConfigCmd(argumentForCommand??"",arrayStrings.ElementAtOrDefault(6)??""),
         _ => BuildResponse.Generate('+', "UNKNOWN")
     };
