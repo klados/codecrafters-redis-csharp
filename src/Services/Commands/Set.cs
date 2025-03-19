@@ -12,7 +12,7 @@ public class Set
         _storeRepository = storeRepository ?? throw new ArgumentNullException(nameof(storeRepository));
     }
 
-    public string SetCommand(string? key, string? data, string? ttl)
+    public string SetCommand(string? key, string? data, DateTime? ttl)
     {
         if (key == null || data == null)
         {

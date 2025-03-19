@@ -5,6 +5,7 @@ using codecrafters_redis.Commands;
 using codecrafters_redis.Helpers;
 using codecrafters_redis.Repositories;
 using codecrafters_redis.Repositories.Interfaces;
+using codecrafters_redis.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 
@@ -12,10 +13,13 @@ var serviceCollection = new ServiceCollection();
 serviceCollection.AddSingleton<Config>();
 serviceCollection.AddSingleton<Set>();
 serviceCollection.AddSingleton<Get>();
+serviceCollection.AddSingleton<Keys>();
 serviceCollection.AddScoped<IStoreRepository, StoreRepository>();
+serviceCollection.AddScoped<RdbService>();
 var serviceProvider = serviceCollection.BuildServiceProvider();
 
 serviceProvider.GetRequiredKeyedService<Config>(null).ParseCommandLineArgs(args);
+serviceProvider.GetRequiredKeyedService<RdbService>(null).LoadDataFromFile();
 
 TcpListener server = new TcpListener(IPAddress.Any, 6379);
 Console.WriteLine("Server started on port 6379");
@@ -76,16 +80,30 @@ string ParseResp(byte[] bytes)
     var arrayStrings = Encoding.UTF8.GetString(bytes).Split("\r\n", StringSplitOptions.RemoveEmptyEntries);
     var command = arrayStrings[2];
     var argumentForCommand = arrayStrings.ElementAtOrDefault(4);
-    var ttl = arrayStrings.ElementAtOrDefault(8)?.ToUpper() == "PX" ? arrayStrings.ElementAtOrDefault(10) : null;
+
+    DateTime? ttl = null;
+    var time = arrayStrings.ElementAtOrDefault(10);
+    switch (arrayStrings.ElementAtOrDefault(8)?.ToUpper())
+    {
+        case "PX":
+            ttl = time == null ? null : DateTime.Now.AddMilliseconds(double.Parse(time));
+            break;
+        case "EX":
+            ttl = time == null ? null : DateTime.Now.AddSeconds(double.Parse(time));
+            break;
+    }
     
     return command.ToUpper() switch
     {
         "PING" => BuildResponse.Generate('+', "PONG"),
         "ECHO" => BuildResponse.Generate(argumentForCommand != null ? '$' : '-',
             argumentForCommand ?? "wrong number of arguments for 'echo' command"),
-        "SET" => serviceProvider.GetRequiredKeyedService<Set>(null).SetCommand(argumentForCommand, arrayStrings.ElementAtOrDefault(6), ttl),
+        "SET" => serviceProvider.GetRequiredKeyedService<Set>(null)
+            .SetCommand(argumentForCommand, arrayStrings.ElementAtOrDefault(6), ttl),
         "GET" => serviceProvider.GetRequiredKeyedService<Get>(null).GetCommand(argumentForCommand),
-        "CONFIG" => serviceProvider.GetRequiredKeyedService<Config>(null).ConfigCmd(argumentForCommand??"",arrayStrings.ElementAtOrDefault(6)??""),
+        "CONFIG" => serviceProvider.GetRequiredKeyedService<Config>(null)
+            .ConfigCmd(argumentForCommand ?? "", arrayStrings.ElementAtOrDefault(6) ?? ""),
+        "KEYS" => serviceProvider.GetRequiredKeyedService<Keys>(null).GetKeys(argumentForCommand),
         _ => BuildResponse.Generate('+', "UNKNOWN")
     };
 }

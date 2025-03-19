@@ -4,8 +4,8 @@ namespace codecrafters_redis.Commands;
 
 public class Config
 {
-    private static string _dir = "";
-    private static string _dbFilename = "";
+    public static string Dir = "";
+    public static string DbFilename = "";
 
     public void ParseCommandLineArgs(string?[] args)
     {
@@ -13,12 +13,12 @@ public class Config
         {
             if (args[i] == "--dir" && i + 1 < args.Length)
             {
-                _dir = args[i + 1] ?? "";
+                Dir = args[i + 1] ?? "";
                 i++; // Skip the value
             }
             else if (args[i] == "--dbfilename" && i + 1 < args.Length)
             {
-                _dbFilename = args[i + 1] ?? "";
+                DbFilename = args[i + 1] ?? "";
                 i++; // Skip the value
             }
         }
@@ -36,12 +36,12 @@ public class Config
         {
             case "DIR":
             {
-                var bulkString = ParseString.ParseKeyValueArray(new[] { targetArg }, new[] { _dir });
+                var bulkString = ParseString.ParseKeyValueArray(new[] { targetArg }, new[] { Dir });
                 return BuildResponse.Generate('*', bulkString);
             }
             case "DBFILENAME":
             {
-                var bulkString = ParseString.ParseKeyValueArray(new[] { targetArg }, new[] { _dbFilename });
+                var bulkString = ParseString.ParseKeyValueArray(new[] { targetArg }, new[] { DbFilename });
                 return BuildResponse.Generate('*', bulkString);
             }
             default:
