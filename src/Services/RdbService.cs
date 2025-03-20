@@ -7,7 +7,7 @@ namespace codecrafters_redis.Services;
 public class RdbService
 {
     private IStoreRepository _storeRepository;
-    
+
     public RdbService(IStoreRepository storeRepository)
     {
         _storeRepository = storeRepository ?? throw new ArgumentNullException(nameof(storeRepository));
@@ -43,66 +43,72 @@ public class RdbService
     {
         Console.WriteLine("Reading RDB file...");
 
-        var redisNameAndVersion = reader.ReadChars(9);
-        Console.WriteLine($"Header section: {new string(redisNameAndVersion)}");
+        reader.ReadChars(9); // redisNameAndVersion
 
-        while (true)
+        try
         {
             var opCode = reader.ReadByte();
 
-            if (opCode == 0xFF)
-            {
-                //ToDo read checksum
-                break;
-            }
-
             // skip Metadata section
-            // if (opCode == 0xFA)
+            while(opCode != 0xFE) opCode = reader.ReadByte();
 
-            // Select DB opcode
-            if (opCode == 0xFE)
-            {
-                var _ = reader.ReadByte(); // databaseSelector
-                ReadDatabaseSection(reader);
-            }
+            reader.ReadByte(); // databaseSelector
+            ReadDatabaseSection(reader);
+
+            //ToDo read checksum
+            return;
+            
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw;
         }
     }
 
     private void ReadDatabaseSection(BinaryReader reader)
     {
-        var ds = reader.ReadByte();
-        if (ds != 0xFB) throw new Exception("Invalid database section");
-
-        var hashTableSize = reader.ReadByte();
-        var keysWithExpireSize = reader.ReadByte();
-        var typeOfData = reader.ReadByte();
-
-        while (typeOfData != 0xFF)
+        try
         {
-            // optional expire  time
-            DateTime? expireAt = null;            
-            if (typeOfData == 0xFC)
+            var ds = reader.ReadByte();
+            if (ds != 0xFB) throw new Exception("Invalid database section");
+
+            var hashTableSize = reader.ReadByte();
+            var keysWithExpireSize = reader.ReadByte();
+            var typeOfData = reader.ReadByte();
+
+            while (typeOfData != 0xFF)
             {
-                var b = reader.ReadBytes(8);
-                expireAt = DateTime.UnixEpoch.AddMilliseconds(BitConverter.ToInt64(b,0));
+                // optional expire time
+                DateTime? expireAt = null;
+                if (typeOfData == 0xFC)
+                {
+                    var b = reader.ReadBytes(8);
+                    expireAt = DateTime.UnixEpoch.AddMilliseconds(BitConverter.ToInt64(b, 0));
+                    typeOfData = reader.ReadByte();
+                }
+                else if (typeOfData == 0xFD)
+                {
+                    var b = reader.ReadBytes(8);
+                    expireAt = DateTime.UnixEpoch.AddSeconds(BitConverter.ToInt64(b, 0));
+                    typeOfData = reader.ReadByte();
+                }
+
+                if (typeOfData == 0)
+                {
+                    var strList = ExtractListOfStrings(reader, 2);
+                    if (strList.Count != 2) throw new Exception("Failed to retrieve string data");
+                    _storeRepository.Add(strList[0], strList[1], expireAt);
+                }
+                else throw new Exception("Non supported data type");
+
                 typeOfData = reader.ReadByte();
             }
-            else if (typeOfData == 0xFD)
-            {
-                var b = reader.ReadBytes(8);
-                expireAt = DateTime.UnixEpoch.AddSeconds(BitConverter.ToInt64(b,0));
-                typeOfData = reader.ReadByte();
-            }
-            
-            if (typeOfData == 0)
-            {
-                var strList = ExtractListOfStrings(reader, 2);
-                if(strList.Count!=2) throw new Exception("Failed to retrieve string data");
-                _storeRepository.Add(strList[0],strList[1], expireAt);
-            }
-            else throw new Exception("Non supported data type");
-            
-            typeOfData = reader.ReadByte();
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw;
         }
     }
 
@@ -114,14 +120,21 @@ public class RdbService
     /// <returns></returns>
     private static List<string> ExtractListOfStrings(BinaryReader reader, int numberOfStrings)
     {
-        var listOfStrings = new List<string>();
-        for (var i = 0; i < numberOfStrings; i++)
+        try
         {
-            var lenOfString = reader.ReadByte();
-            listOfStrings.Add(Encoding.UTF8.GetString(reader.ReadBytes(lenOfString)));
-        }
+            var listOfStrings = new List<string>();
+            for (var i = 0; i < numberOfStrings; i++)
+            {
+                var lenOfString = reader.ReadByte();
+                listOfStrings.Add(Encoding.UTF8.GetString(reader.ReadBytes(lenOfString)));
+            }
 
-        return listOfStrings;
+            return listOfStrings;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e.Message);
+            return [];
+        }
     }
-    
 }

@@ -14,6 +14,7 @@ serviceCollection.AddSingleton<Config>();
 serviceCollection.AddSingleton<Set>();
 serviceCollection.AddSingleton<Get>();
 serviceCollection.AddSingleton<Keys>();
+serviceCollection.AddSingleton<RedisType>();
 serviceCollection.AddScoped<IStoreRepository, StoreRepository>();
 serviceCollection.AddScoped<RdbService>();
 var serviceProvider = serviceCollection.BuildServiceProvider();
@@ -104,6 +105,7 @@ string ParseResp(byte[] bytes)
         "CONFIG" => serviceProvider.GetRequiredKeyedService<Config>(null)
             .ConfigCmd(argumentForCommand ?? "", arrayStrings.ElementAtOrDefault(6) ?? ""),
         "KEYS" => serviceProvider.GetRequiredKeyedService<Keys>(null).GetKeys(argumentForCommand),
+        "TYPE" => serviceProvider.GetRequiredKeyedService<RedisType>(null).GetType(argumentForCommand),
         _ => BuildResponse.Generate('+', "UNKNOWN")
     };
 }
