@@ -8,7 +8,7 @@ public static class BuildResponse
         {
             '+' => $"+{response}\r\n",
             '$' => $"{dataType}{response.Length}\r\n{response}\r\n",
-            '-' => $"{dataType}Err {response}\r\n",
+            '-' => $"{dataType}ERR {response}\r\n",
             '*' => $"{dataType}{response}",
             _ => throw new NotImplementedException("Unknown response type"),
         };

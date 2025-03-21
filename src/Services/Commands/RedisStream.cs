@@ -37,7 +37,14 @@ public class RedisStream
                 arguments.ElementAtOrDefault(i + 2)));
         }
 
-        keyId = _streamRepository.AddData(keyName, streamData);
+        try
+        {
+            keyId = _streamRepository.AddData(keyName, streamData);
+        }
+        catch (Exception e)
+        {
+            return BuildResponse.Generate('-', e.Message);
+        }
         return BuildResponse.Generate('$', keyId);
     }
 }
