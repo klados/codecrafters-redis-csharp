@@ -19,7 +19,7 @@ public class RdbService
 
         if (!File.Exists(filePath))
         {
-            Console.WriteLine($"File {filePath} does not exist!");
+            Console.WriteLine($"File {filePath} does not exist!, no data loaded!");
             return;
         }
 

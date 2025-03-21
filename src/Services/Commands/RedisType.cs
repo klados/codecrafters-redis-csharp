@@ -6,10 +6,12 @@ namespace codecrafters_redis.Commands;
 public class RedisType
 {
     private readonly IStoreRepository _storeRepository;
-
-    public RedisType(IStoreRepository storeRepository)
+    private readonly IStreamRepository _streamRepository;
+    
+    public RedisType(IStoreRepository storeRepository, IStreamRepository streamRepository)
     {
         _storeRepository = storeRepository ?? throw new ArgumentNullException(nameof(storeRepository));
+        _streamRepository = streamRepository ?? throw new ArgumentNullException(nameof(streamRepository));
     }
 
     public string GetType(string? key)
@@ -19,12 +21,15 @@ public class RedisType
             return BuildResponse.Generate('-', "wrong number of arguments for 'type' command"); //Todo fix it
         }
 
-        var val = _storeRepository.Get(key);
-        if (val == null)
+        if (_storeRepository.Get(key) != null)
         {
-            return BuildResponse.Generate('+', "none");
+            return BuildResponse.Generate('+', "string");
         }
-
-        return BuildResponse.Generate('+', "string");
+        if (_streamRepository.CheckIfStreamExists(key))
+        {
+            return BuildResponse.Generate('+', "stream");
+        }
+        
+        return BuildResponse.Generate('+', "none");
     }
 }

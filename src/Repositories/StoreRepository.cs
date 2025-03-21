@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
 using codecrafters_redis.Models;
 using codecrafters_redis.Repositories.Interfaces;
@@ -6,7 +7,7 @@ namespace codecrafters_redis.Repositories;
 
 public class StoreRepository : IStoreRepository
 {
-    private Dictionary<string, DataWithTtl> storedData = new();
+    private ConcurrentDictionary<string, DataWithTtl> storedData = new();
 
     public StoreRepository()
     {
@@ -14,7 +15,7 @@ public class StoreRepository : IStoreRepository
 
     public void Add(string key, string data, DateTime? ttl = null)
     {
-        storedData.Add(key, new DataWithTtl()
+        storedData.TryAdd(key, new DataWithTtl()
         {
             strValue = data,
             ExpiredAt = ttl
@@ -23,7 +24,7 @@ public class StoreRepository : IStoreRepository
 
     public bool Remove(string key)
     {
-        return storedData.Remove(key);
+        return storedData.TryRemove(key, out _);
     }
 
     public string? Get(string key)

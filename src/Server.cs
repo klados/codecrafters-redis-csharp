@@ -15,7 +15,9 @@ serviceCollection.AddSingleton<Set>();
 serviceCollection.AddSingleton<Get>();
 serviceCollection.AddSingleton<Keys>();
 serviceCollection.AddSingleton<RedisType>();
+serviceCollection.AddSingleton<RedisStream>();
 serviceCollection.AddScoped<IStoreRepository, StoreRepository>();
+serviceCollection.AddScoped<IStreamRepository, StreamRepository>();
 serviceCollection.AddScoped<RdbService>();
 var serviceProvider = serviceCollection.BuildServiceProvider();
 
@@ -106,6 +108,7 @@ string ParseResp(byte[] bytes)
             .ConfigCmd(argumentForCommand ?? "", arrayStrings.ElementAtOrDefault(6) ?? ""),
         "KEYS" => serviceProvider.GetRequiredKeyedService<Keys>(null).GetKeys(argumentForCommand),
         "TYPE" => serviceProvider.GetRequiredKeyedService<RedisType>(null).GetType(argumentForCommand),
+        "XADD" => serviceProvider.GetRequiredKeyedService<RedisStream>(null).XADD(arrayStrings[4..]),
         _ => BuildResponse.Generate('+', "UNKNOWN")
     };
 }
