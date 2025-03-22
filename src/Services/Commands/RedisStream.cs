@@ -1,3 +1,4 @@
+using System.Globalization;
 using codecrafters_redis.Helpers;
 using codecrafters_redis.Models;
 using codecrafters_redis.Repositories.Interfaces;
@@ -18,14 +19,24 @@ public class RedisStream
         var time = key.Split('-');
         var timestamp = time.ElementAtOrDefault(0);
         var autoIncrement = time.ElementAtOrDefault(1);
-        if (timestamp == null || autoIncrement == null || (timestamp == "*" && autoIncrement == "*"))
+        
+        // validate time input 
+        if (timestamp == null || 
+            (timestamp != null && timestamp != "*" && autoIncrement == null) ||
+            (timestamp == "*" && autoIncrement == null && time.Contains("-")) ||
+            (timestamp == "*" && autoIncrement != null))
         {
             throw new Exception("Invalid stream ID specified as stream command argument");
         }
 
         var newAutoIncrement = "";
         var ids = _streamRepository.GetIdsOfAStream(streamName);
-        if (autoIncrement == "*")
+        if (timestamp == "*")
+        {
+            timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
+            newAutoIncrement = "0";
+        }
+        else if (autoIncrement == "*")
         {
             if (ids.Count == 0)
             {
@@ -37,7 +48,7 @@ public class RedisStream
                 var lastAutoIncrement = ids.Last().Split('-')[1];
 
                 newAutoIncrement = (timestamp == lastTimestamp)
-                    ? (int.Parse(lastAutoIncrement) + 1).ToString()
+                    ? (float.Parse(lastAutoIncrement) + 1).ToString(CultureInfo.InvariantCulture)
                     : "0";
             }
         }

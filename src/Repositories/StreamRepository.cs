@@ -34,8 +34,8 @@ public class StreamRepository : IStreamRepository
     {
         var newTimestamp = data.Id.Split('-');
         
-        if (int.Parse(newTimestamp[0]) < 0 || int.Parse(newTimestamp[1]) < 0 ||
-            (int.Parse(newTimestamp[0]) == 0 && int.Parse(newTimestamp[1]) == 0))
+        if (float.Parse(newTimestamp[0]) < 0 || float.Parse(newTimestamp[1]) < 0 ||
+            (float.Parse(newTimestamp[0]) == 0 && float.Parse(newTimestamp[1]) == 0))
         {
             throw new Exception("The ID specified in XADD must be greater than 0-0");
         }
@@ -49,13 +49,13 @@ public class StreamRepository : IStreamRepository
 
         var lastAddedData = storedData.Last().Id;
         var oldTimestamp = lastAddedData.Split('-');
-        if (int.Parse(oldTimestamp[0]) > int.Parse(newTimestamp[0]))
+        if (float.Parse(oldTimestamp[0]) > float.Parse(newTimestamp[0]))
         {
             throw new Exception("The ID specified in XADD is equal or smaller than the target stream top item");
         }
 
-        if (int.Parse(oldTimestamp[1]) >= int.Parse(newTimestamp[1]) &&
-            int.Parse(oldTimestamp[0]) == int.Parse(newTimestamp[0]))
+        if (float.Parse(oldTimestamp[1]) >= float.Parse(newTimestamp[1]) &&
+            float.Parse(oldTimestamp[0]) == float.Parse(newTimestamp[0]))
         {
             throw new Exception("The ID specified in XADD is equal or smaller than the target stream top item");
         }
