@@ -13,6 +13,23 @@ public class StreamRepository : IStreamRepository
         return _storedData.TryGetValue(streamName, out var _);
     }
 
+    public List<string> GetIdsOfAStream(string streamName)
+    {
+        _storedData.TryGetValue(streamName, out var stream);
+        
+        if (stream == null) return new List<string>();
+        
+        return stream.Select(x => x.Id).ToList();
+    }
+    
+    /// <summary>
+    /// validate that the provided id is correct
+    /// then add to ConcurrentDictionary
+    /// </summary>
+    /// <param name="streamName"></param>
+    /// <param name="data"></param>
+    /// <returns></returns>
+    /// <exception cref="Exception"></exception>
     public string AddData(string streamName, StreamDataCell data)
     {
         var newTimestamp = data.Id.Split('-');
