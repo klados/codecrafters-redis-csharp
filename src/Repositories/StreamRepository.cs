@@ -67,16 +67,41 @@ public class StreamRepository : IStreamRepository
 
     public IEnumerable<StreamDataCell> GetDataOfStream(string streamName, string startTime, string endTime)
     {
-        return _storedData.TryGetValue(streamName, out var storedData)
-            ? storedData.Where(x => TimestampRangeCompare(x.Id, startTime, endTime))
-            : new List<StreamDataCell>();
+        _storedData.TryGetValue(streamName, out var storedData);
+
+        if (storedData == null) return new List<StreamDataCell>();
+
+        if (startTime == "-")
+        {
+            return storedData.Where(x => EndTimeCompare(x.Id, endTime));
+        }
+
+        return storedData.Where(x => TimestampRangeCompare(x.Id, startTime, endTime));
+    }
+
+    /// <summary>
+    /// return data from the start to the provided variable
+    /// </summary>
+    /// <param name="storedValueTime"></param>
+    /// <param name="endTime"></param>
+    /// <returns></returns>
+    private static bool EndTimeCompare(string storedValueTime, string endTime)
+    {
+        var storedValueTimeTimestamp = storedValueTime.Split('-')[0];
+        var storedValueTimeAutoIncrement = storedValueTime.Split('-')[1];
+
+        var endTimeTimestamp = endTime.Split('-')[0];
+        var endTimeAutoIncrement = endTime.Split('-')[1];
+
+        return long.Parse(storedValueTimeTimestamp) <= long.Parse(endTimeTimestamp) &&
+               long.Parse(storedValueTimeAutoIncrement) <= long.Parse(endTimeAutoIncrement);
     }
 
     /// <summary>
     /// returns true is the provided value is inside the provided timestamp range
     /// </summary>
     /// <returns></returns>
-    private bool TimestampRangeCompare(string storedValueTime, string startTime, string endTime)
+    private static bool TimestampRangeCompare(string storedValueTime, string startTime, string endTime)
     {
         var storedValueTimeTimestamp = storedValueTime.Split('-')[0];
         var storedValueTimeAutoIncrement = storedValueTime.Split('-')[1];
