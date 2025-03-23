@@ -109,6 +109,7 @@ string ParseResp(byte[] bytes)
         "KEYS" => serviceProvider.GetRequiredKeyedService<Keys>(null).GetKeys(argumentForCommand),
         "TYPE" => serviceProvider.GetRequiredKeyedService<RedisType>(null).GetType(argumentForCommand),
         "XADD" => serviceProvider.GetRequiredKeyedService<RedisStream>(null).XADD(arrayStrings[4..]),
+        "XRANGE" => serviceProvider.GetRequiredKeyedService<RedisStream>(null).XRANGE(arrayStrings[4..]),
         _ => BuildResponse.Generate('+', "UNKNOWN")
     };
 }

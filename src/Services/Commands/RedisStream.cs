@@ -95,4 +95,20 @@ public class RedisStream
 
         return BuildResponse.Generate('$', keyId);
     }
+
+    public string XRANGE(params string[] arguments)
+    {
+        var streamName = arguments.ElementAtOrDefault(0);
+        var startTime = arguments.ElementAtOrDefault(2);
+        var endTime = arguments.ElementAtOrDefault(4);
+
+        if (streamName == null || startTime == null || endTime == null)
+        {
+            return BuildResponse.Generate('-', "wrong number of arguments for 'xrange' command");
+        }
+        
+        var data = _streamRepository.GetDataOfStream(streamName, startTime, endTime);
+
+        return BuildResponse.Generate('*', ParseString.ParseStreamDataCellList(data.ToList()));
+    }
 }

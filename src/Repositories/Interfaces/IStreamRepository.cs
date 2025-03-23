@@ -7,4 +7,5 @@ public interface IStreamRepository
     bool CheckIfStreamExists(string streamName);
     public List<string> GetIdsOfAStream(string streamName);
     string AddData(string keyName, StreamDataCell data);
+    IEnumerable<StreamDataCell> GetDataOfStream(string streamName, string startKey, string endTime);
 }
