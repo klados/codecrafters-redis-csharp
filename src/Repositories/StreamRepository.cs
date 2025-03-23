@@ -70,22 +70,45 @@ public class StreamRepository : IStreamRepository
         _storedData.TryGetValue(streamName, out var storedData);
 
         if (storedData == null) return new List<StreamDataCell>();
+        if (endTime == "+")
+
+        {
+            return storedData.Where(x => FromSpecificTimestampUntilTheLastInsertedData(x.Id, startTime));
+        }
 
         if (startTime == "-")
         {
-            return storedData.Where(x => EndTimeCompare(x.Id, endTime));
+            return storedData.Where(x => FromTheStartUntilSpecifiedTimestamp(x.Id, endTime));
         }
 
         return storedData.Where(x => TimestampRangeCompare(x.Id, startTime, endTime));
     }
 
     /// <summary>
-    /// return data from the start to the provided variable
+    /// return data the provided datetime until the last added record
+    /// </summary>
+    /// <param name="storedValueTime"></param>
+    /// <param name="startTime"></param>
+    /// <returns></returns>
+    private static bool FromSpecificTimestampUntilTheLastInsertedData(string storedValueTime, string startTime)
+    {
+        var storedValueTimeTimestamp = storedValueTime.Split('-')[0];
+        var storedValueTimeAutoIncrement = storedValueTime.Split('-')[1];
+
+        var startTimeTimestamp = startTime.Split('-')[0];
+        var startTimeAutoIncrement = startTime.Split('-')[1];
+
+        return long.Parse(storedValueTimeTimestamp) >= long.Parse(startTimeTimestamp) &&
+               long.Parse(storedValueTimeAutoIncrement) >= long.Parse(startTimeAutoIncrement);
+    }
+
+    /// <summary>
+    /// return data from the first stored data to the datetime of the provided variable
     /// </summary>
     /// <param name="storedValueTime"></param>
     /// <param name="endTime"></param>
     /// <returns></returns>
-    private static bool EndTimeCompare(string storedValueTime, string endTime)
+    private static bool FromTheStartUntilSpecifiedTimestamp(string storedValueTime, string endTime)
     {
         var storedValueTimeTimestamp = storedValueTime.Split('-')[0];
         var storedValueTimeAutoIncrement = storedValueTime.Split('-')[1];
