@@ -19,9 +19,9 @@ public class RedisStream
         var time = key.Split('-');
         var timestamp = time.ElementAtOrDefault(0);
         var autoIncrement = time.ElementAtOrDefault(1);
-        
+
         // validate time input 
-        if (timestamp == null || 
+        if (timestamp == null ||
             (timestamp != null && timestamp != "*" && autoIncrement == null) ||
             (timestamp == "*" && autoIncrement == null && time.Contains("-")) ||
             (timestamp == "*" && autoIncrement != null))
@@ -106,7 +106,7 @@ public class RedisStream
         {
             return BuildResponse.Generate('-', "wrong number of arguments for 'xrange' command");
         }
-        
+
         var data = _streamRepository.GetDataOfStream(streamName, startTime, endTime);
 
         return BuildResponse.Generate('*', ParseString.ParseStreamDataCellList(data.ToList()));
@@ -114,15 +114,45 @@ public class RedisStream
 
     public string XREAD(params string[] arguments)
     {
-        var streamName = arguments.ElementAtOrDefault(2);
-        var startTime = arguments.ElementAtOrDefault(4);
+        var streamNames = new List<string>();
+        var startTimes = new List<string>();
 
-        if (streamName == null || startTime == null)
+        var endOfNames = false;
+        for (var i = 2; i < arguments.Length; i += 2)
+        {
+            if (!endOfNames && arguments[i].Split('-').Length == 2)
+            {
+                endOfNames = true;
+            }
+
+            if (!endOfNames)
+            {
+                streamNames.Add(arguments[i]);
+            }
+            else
+            {
+                startTimes.Add(arguments[i]);
+            }
+        }
+
+        if (streamNames.Count == 0 || startTimes.Count == 0)
         {
             return BuildResponse.Generate('-', "wrong number of arguments for 'xread' command");
         }
-        
-        var data = _streamRepository.GetDataOfStreamExclusive(streamName, startTime);
-        return BuildResponse.Generate('*', ParseString.ParseStreamDataCellListWithStreamNames(data.ToList(),new List<string>(){streamName}));
+
+        if (streamNames.Count != startTimes.Count)
+        {
+            return BuildResponse.Generate('-',
+                "Unbalanced XREAD list of streams: for each stream key an ID or '$' must be specified.");
+        }
+
+        var data = new List<(string, IEnumerable<StreamDataCell>)>();
+        for (var i = 0; i < streamNames.Count; i++)
+        {
+            var dataForSpecificStream = _streamRepository.GetDataOfStreamExclusive(streamNames[i], startTimes[i]);
+            data.Add((streamNames[i], dataForSpecificStream));
+        }
+
+        return BuildResponse.Generate('*', ParseString.ParseStreamDataCellListWithStreamNames(data));
     }
 }

@@ -65,19 +65,17 @@ public static class ParseString
         return sb.ToString();
     }
 
-    public static string ParseStreamDataCellListWithStreamNames(List<StreamDataCell> data, List<string> streamNames)
+    public static string ParseStreamDataCellListWithStreamNames(List<(string, IEnumerable<StreamDataCell>)> data)
     {
         var sb = new StringBuilder();
-        sb.Append(streamNames.Count + "\r\n");
+        sb.Append(data.Count + "\r\n");
 
-        for (var i = 0; i < streamNames.Count; i++)
+        for (var i = 0; i < data.Count; i++)
         {
             sb.Append($"*{2}\r\n");
-            sb.Append($"${streamNames[i].Length}\r\n{streamNames[i]}\r\n");
-            sb.Append($"*");
-            sb.Append(ParseStreamDataCellList(data));
+            sb.Append($"${data[i].Item1.Count()}\r\n{data[i].Item1}\r\n");
+            sb.Append($"*{ParseStreamDataCellList(data[i].Item2.ToList())}");
         }
-
         return sb.ToString();
     }
 }
