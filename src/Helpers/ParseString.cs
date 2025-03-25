@@ -15,7 +15,7 @@ public static class ParseString
     {
         var len = keys.Length < data.Length ? keys.Length : data.Length;
         var sb = new StringBuilder();
-        sb.Append($"{len*2}\r\n");
+        sb.Append($"{len * 2}\r\n");
 
         for (var i = 0; i < len; i++)
         {
@@ -33,6 +33,7 @@ public static class ParseString
         {
             sb.Append($"${d.Length}\r\n{d}\r\n");
         }
+
         return sb.ToString();
     }
 
@@ -41,25 +42,42 @@ public static class ParseString
         var sb = new StringBuilder();
         sb.Append("*2\r\n");
         sb.Append($"${data.Id.Length}\r\n{data.Id}\r\n");
-        sb.Append($"*{data.Data.Count*2}\r\n");
+        sb.Append($"*{data.Data.Count * 2}\r\n");
         foreach (var d in data.Data)
         {
             sb.Append($"${d.Key.Length}\r\n{d.Key}\r\n");
             sb.Append($"${d.Value.Length}\r\n{d.Value}\r\n");
         }
+
         return sb.ToString();
     }
-    
+
     public static string ParseStreamDataCellList(List<StreamDataCell> data)
     {
         var sb = new StringBuilder();
         sb.Append(data.Count + "\r\n");
-        
+
         foreach (var d in data)
         {
             sb.Append(ParseStreamDataCellL(d));
         }
-        
+
+        return sb.ToString();
+    }
+
+    public static string ParseStreamDataCellListWithStreamNames(List<StreamDataCell> data, List<string> streamNames)
+    {
+        var sb = new StringBuilder();
+        sb.Append(streamNames.Count + "\r\n");
+
+        for (var i = 0; i < streamNames.Count; i++)
+        {
+            sb.Append($"*{2}\r\n");
+            sb.Append($"${streamNames[i].Length}\r\n{streamNames[i]}\r\n");
+            sb.Append($"*");
+            sb.Append(ParseStreamDataCellList(data));
+        }
+
         return sb.ToString();
     }
 }

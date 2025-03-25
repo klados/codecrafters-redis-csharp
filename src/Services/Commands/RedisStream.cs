@@ -111,4 +111,18 @@ public class RedisStream
 
         return BuildResponse.Generate('*', ParseString.ParseStreamDataCellList(data.ToList()));
     }
+
+    public string XREAD(params string[] arguments)
+    {
+        var streamName = arguments.ElementAtOrDefault(2);
+        var startTime = arguments.ElementAtOrDefault(4);
+
+        if (streamName == null || startTime == null)
+        {
+            return BuildResponse.Generate('-', "wrong number of arguments for 'xread' command");
+        }
+        
+        var data = _streamRepository.GetDataOfStreamExclusive(streamName, startTime);
+        return BuildResponse.Generate('*', ParseString.ParseStreamDataCellListWithStreamNames(data.ToList(),new List<string>(){streamName}));
+    }
 }
