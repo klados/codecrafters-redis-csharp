@@ -129,7 +129,7 @@ public class RedisStream
         var endOfNames = false;
         for (var i = startIndex; i < arguments.Length; i += 2)
         {
-            if (!endOfNames && arguments[i].Split('-').Length == 2)
+            if (!endOfNames && (arguments[i].Split('-').Length == 2 || arguments[i] == "$"))
             {
                 endOfNames = true;
             }
@@ -140,7 +140,7 @@ public class RedisStream
             }
             else
             {
-                startTimes.Add(arguments[i]);
+              startTimes.Add(arguments[i]);
             }
         }
 
@@ -158,6 +158,14 @@ public class RedisStream
         if (block && blockDurationStr == null)
         {
             return BuildResponse.Generate('-',"timeout is not an integer or out of range");
+        }
+
+        for (var i = 0; i < startTimes.Count; i++)
+        {
+            if (startTimes[i] == "$")
+            {
+                startTimes[i] = _streamRepository.GetLatestTimestampOfAStream(streamNames[i]);
+            }
         }
         
         var data = new List<(string, IEnumerable<StreamDataCell>)>();

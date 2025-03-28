@@ -65,6 +65,12 @@ public class StreamRepository : IStreamRepository
         return data.Id;
     }
 
+    public string GetLatestTimestampOfAStream(string streamName)
+    {
+        _storedData.TryGetValue(streamName, out var streams);
+        return streams?.LastOrDefault()?.Id ?? "0-0";
+    }
+    
     public IEnumerable<StreamDataCell> GetDataOfStream(string streamName, string startTime, string endTime)
     {
         _storedData.TryGetValue(streamName, out var storedData);
