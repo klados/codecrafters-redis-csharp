@@ -176,7 +176,7 @@ public class RedisStream
             {
                 System.Threading.Thread.Sleep(30);
                 data.Clear();
-                if (sw.ElapsedMilliseconds >= blockDuration)
+                if (sw.ElapsedMilliseconds >= blockDuration && blockDuration > 0)
                 {
                     return "$-1\r\n"; // return nil
                 }
