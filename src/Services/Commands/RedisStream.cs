@@ -116,9 +116,18 @@ public class RedisStream
     {
         var streamNames = new List<string>();
         var startTimes = new List<string>();
-
+        var startIndex = 2;
+        var block = false;
+        var blockDurationStr = arguments.ElementAtOrDefault(2);
+        
+        if (arguments.ElementAtOrDefault(0)?.ToUpper() == "BLOCK")
+        {
+            startIndex = 6;
+            block = true;
+        }
+        
         var endOfNames = false;
-        for (var i = 2; i < arguments.Length; i += 2)
+        for (var i = startIndex; i < arguments.Length; i += 2)
         {
             if (!endOfNames && arguments[i].Split('-').Length == 2)
             {
@@ -146,13 +155,50 @@ public class RedisStream
                 "Unbalanced XREAD list of streams: for each stream key an ID or '$' must be specified.");
         }
 
+        if (block && blockDurationStr == null)
+        {
+            return BuildResponse.Generate('-',"timeout is not an integer or out of range");
+        }
+        
         var data = new List<(string, IEnumerable<StreamDataCell>)>();
+
+        if (block)
+        {
+            var blockDurationCast =  float.TryParse(blockDurationStr, out var blockDuration);
+
+            if (!blockDurationCast)
+            {
+                return BuildResponse.Generate('-', "timeout is not an integer or out of range");
+            }
+            
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            while (true)
+            {
+                System.Threading.Thread.Sleep(30);
+                data.Clear();
+                if (sw.ElapsedMilliseconds >= blockDuration)
+                {
+                    return "$-1\r\n"; // return nil
+                }
+                
+                for (var i = 0; i < streamNames.Count; i++)
+                {
+                    var dataForSpecificStream = _streamRepository.GetDataOfStreamExclusive(streamNames[i], startTimes[i]).ToList();
+                    if(dataForSpecificStream.Count > 0) data.Add((streamNames[i], dataForSpecificStream));
+                }
+                
+                if(data.Count != 0) return BuildResponse.Generate('*', ParseString.ParseStreamDataCellListWithStreamNames(data));
+            } 
+        }
+        
         for (var i = 0; i < streamNames.Count; i++)
         {
-            var dataForSpecificStream = _streamRepository.GetDataOfStreamExclusive(streamNames[i], startTimes[i]);
-            data.Add((streamNames[i], dataForSpecificStream));
+            var dataForSpecificStream = _streamRepository.GetDataOfStreamExclusive(streamNames[i], startTimes[i]).ToList();
+            if(dataForSpecificStream.Count > 0) data.Add((streamNames[i], dataForSpecificStream));
         }
 
-        return BuildResponse.Generate('*', ParseString.ParseStreamDataCellListWithStreamNames(data));
+        return data.Count == 0
+            ? "$-1\r\n" // return nil
+            : BuildResponse.Generate('*', ParseString.ParseStreamDataCellListWithStreamNames(data));
     }
 }
