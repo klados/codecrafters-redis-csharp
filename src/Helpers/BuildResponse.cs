@@ -7,6 +7,7 @@ public static class BuildResponse
         return (dataType) switch
         {
             '+' => $"+{response}\r\n",
+            ':' => $":{response}\r\n",
             '$' => $"{dataType}{response.Length}\r\n{response}\r\n",
             '-' => $"{dataType}ERR {response}\r\n",
             '*' => $"{dataType}{response}",

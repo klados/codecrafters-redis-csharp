@@ -12,6 +12,7 @@ using Microsoft.Extensions.DependencyInjection;
 var serviceCollection = new ServiceCollection();
 serviceCollection.AddSingleton<Config>();
 serviceCollection.AddSingleton<Set>();
+serviceCollection.AddSingleton<Incr>();
 serviceCollection.AddSingleton<Get>();
 serviceCollection.AddSingleton<Keys>();
 serviceCollection.AddSingleton<RedisType>();
@@ -111,6 +112,7 @@ string ParseResp(byte[] bytes)
         "XADD" => serviceProvider.GetRequiredKeyedService<RedisStream>(null).XADD(arrayStrings[4..]),
         "XRANGE" => serviceProvider.GetRequiredKeyedService<RedisStream>(null).XRANGE(arrayStrings[4..]),
         "XREAD" => serviceProvider.GetRequiredKeyedService<RedisStream>(null).XREAD(arrayStrings[4..]),
+        "INCR" => serviceProvider.GetRequiredKeyedService<Incr>(null).IncrCommand(argumentForCommand),
         _ => BuildResponse.Generate('+', "UNKNOWN")
     };
 }
