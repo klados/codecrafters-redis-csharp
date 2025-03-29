@@ -15,11 +15,21 @@ public class StoreRepository : IStoreRepository
 
     public void Add(string key, string data, DateTime? ttl = null)
     {
-        storedData.TryAdd(key, new DataWithTtl()
+        if (storedData.TryAdd(key, new DataWithTtl()
+            {
+                strValue = data,
+                ExpiredAt = ttl
+            })) return;
+
+        var currentValue = storedData[key];
+        if (storedData.TryUpdate(key, new DataWithTtl()
+            {
+                strValue = data,
+                ExpiredAt = ttl
+            }, currentValue))
         {
-            strValue = data,
-            ExpiredAt = ttl
-        });
+            Console.WriteLine($"Failed to update stored data for key: {key}");
+        }
     }
 
     public bool Remove(string key)
@@ -43,7 +53,8 @@ public class StoreRepository : IStoreRepository
 
     public List<string> GetValidKeys(string searchString)
     {
-        var keys = storedData.Where(x=>x.Value.ExpiredAt==null || (x.Value.ExpiredAt > DateTime.Now)).ToDictionary().Keys.ToList();
-        return keys.Where(item => Regex.IsMatch(item, $@"^{searchString.Replace("*",".*")}$")).ToList();
+        var keys = storedData.Where(x => x.Value.ExpiredAt == null || (x.Value.ExpiredAt > DateTime.Now)).ToDictionary()
+            .Keys.ToList();
+        return keys.Where(item => Regex.IsMatch(item, $@"^{searchString.Replace("*", ".*")}$")).ToList();
     }
 }
