@@ -17,6 +17,7 @@ serviceCollection.AddSingleton<Get>();
 serviceCollection.AddSingleton<Keys>();
 serviceCollection.AddSingleton<RedisType>();
 serviceCollection.AddSingleton<RedisStream>();
+serviceCollection.AddSingleton<Multi>();
 serviceCollection.AddScoped<IStoreRepository, StoreRepository>();
 serviceCollection.AddScoped<IStreamRepository, StreamRepository>();
 serviceCollection.AddScoped<RdbService>();
@@ -113,6 +114,7 @@ string ParseResp(byte[] bytes)
         "XRANGE" => serviceProvider.GetRequiredKeyedService<RedisStream>(null).XRANGE(arrayStrings[4..]),
         "XREAD" => serviceProvider.GetRequiredKeyedService<RedisStream>(null).XREAD(arrayStrings[4..]),
         "INCR" => serviceProvider.GetRequiredKeyedService<Incr>(null).IncrCommand(argumentForCommand),
+        "MULTI" => serviceProvider.GetRequiredKeyedService<Multi>(null).MultiCommand(arrayStrings[4..]),
         _ => BuildResponse.Generate('+', "UNKNOWN")
     };
 }
