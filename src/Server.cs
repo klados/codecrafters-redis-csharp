@@ -17,7 +17,7 @@ serviceCollection.AddSingleton<Get>();
 serviceCollection.AddSingleton<Keys>();
 serviceCollection.AddSingleton<RedisType>();
 serviceCollection.AddSingleton<RedisStream>();
-serviceCollection.AddSingleton<Multi>();
+serviceCollection.AddSingleton<Transactions>();
 serviceCollection.AddScoped<IStoreRepository, StoreRepository>();
 serviceCollection.AddScoped<IStreamRepository, StreamRepository>();
 serviceCollection.AddScoped<RdbService>();
@@ -34,9 +34,12 @@ try
 {
     while (true)
     {
-        var socket = server.AcceptSocket(); // wait for client
+        // var socket = server.AcceptSocket(); // wait for client
+        TcpClient client = server.AcceptTcpClient();
         Console.WriteLine("Client connected");
-        Task.Run(() => HandleTask(socket));
+        
+        NetworkStream stream = client.GetStream();
+        Task.Run(() => HandleTask(stream));
     }
 }
 catch (Exception e)
@@ -51,22 +54,22 @@ finally
 return;
 
 
-async Task HandleTask(Socket socket)
+async Task HandleTask(NetworkStream stream)
 {
     try
     {
-        while (socket.Connected)
+        while (true)
         {
             var buffer = new byte[1024];
-            var bytesReceived = await socket.ReceiveAsync(buffer, SocketFlags.None);
+            var bytesReceived = await stream.ReadAsync(buffer);
 
             if (bytesReceived == 0)
             {
                 break;
             }
 
-            var response = ParseResp(buffer);
-            await socket.SendAsync(Encoding.ASCII.GetBytes(response), SocketFlags.None);
+            var response = ParseResp(buffer, stream);
+            await stream.WriteAsync(Encoding.ASCII.GetBytes(response));
         }
     }
     catch (Exception e)
@@ -75,12 +78,12 @@ async Task HandleTask(Socket socket)
     }
     finally
     {
-        socket.Close();
+        stream.Close();
         Console.WriteLine("Client connection closed");
     }
 }
 
-string ParseResp(byte[] bytes)
+string ParseResp(byte[] bytes, NetworkStream stream)
 {
     var arrayStrings = Encoding.UTF8.GetString(bytes).Split("\r\n", StringSplitOptions.RemoveEmptyEntries);
     var command = arrayStrings[2];
@@ -114,7 +117,8 @@ string ParseResp(byte[] bytes)
         "XRANGE" => serviceProvider.GetRequiredKeyedService<RedisStream>(null).XRANGE(arrayStrings[4..]),
         "XREAD" => serviceProvider.GetRequiredKeyedService<RedisStream>(null).XREAD(arrayStrings[4..]),
         "INCR" => serviceProvider.GetRequiredKeyedService<Incr>(null).IncrCommand(argumentForCommand),
-        "MULTI" => serviceProvider.GetRequiredKeyedService<Multi>(null).MultiCommand(arrayStrings[4..]),
+        "MULTI" => serviceProvider.GetRequiredKeyedService<Transactions>(null).MultiCommand(stream),
+        "EXEC" => serviceProvider.GetRequiredKeyedService<Transactions>(null).ExecCommand(stream),
         _ => BuildResponse.Generate('+', "UNKNOWN")
     };
 }
