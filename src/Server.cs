@@ -20,6 +20,7 @@ serviceCollection.AddSingleton<RedisStream>();
 serviceCollection.AddSingleton<Transactions>();
 serviceCollection.AddScoped<IStoreRepository, StoreRepository>();
 serviceCollection.AddScoped<IStreamRepository, StreamRepository>();
+serviceCollection.AddScoped<ITransactionRepository, TransactionRepository>();
 serviceCollection.AddScoped<RdbService>();
 var serviceProvider = serviceCollection.BuildServiceProvider();
 
