@@ -16,8 +16,9 @@ public class Transactions
 
     public string MultiCommand(NetworkStream stream)
     {
-        _transactionRepository.TryToAddToTransactionState(stream);
-        return BuildResponse.Generate('+', "OK");
+        return _transactionRepository.InitNewTransaction(stream)
+            ? BuildResponse.Generate('+', "OK")
+            : BuildResponse.Generate('-', "MULTI calls can not be nested");
     }
 
     public string ExecCommand(NetworkStream stream)
@@ -34,7 +35,18 @@ public class Transactions
             _transactionRepository.ClearStreamFromTransactionStateIfExists(stream);
             return BuildResponse.Generate('*', "0\r\n");
         }
-        
+
+        _transactionRepository.ClearStreamFromTransactionStateIfExists(stream);
         return BuildResponse.Generate('+', "OK"); // fix it in the future
+    }
+
+    public bool CheckIfKeyExists(NetworkStream stream)
+    {
+        return _transactionRepository.CheckIfKeyExists(stream);
+    }
+
+    public void TryToAddToTransactionState(NetworkStream stream, string command)
+    {
+        _transactionRepository.TryToAddToTransactionState(stream, command);
     }
 }

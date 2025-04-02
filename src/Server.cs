@@ -102,6 +102,16 @@ string ParseResp(byte[] bytes, NetworkStream stream)
             break;
     }
     
+    // check if for the current NetworkStream we are running a transaction
+    var transactionRepository = serviceProvider.GetRequiredKeyedService<Transactions>(null);
+    if (transactionRepository.CheckIfKeyExists(stream) && 
+        !command.Equals("EXEC", StringComparison.CurrentCultureIgnoreCase) && 
+        !command.Equals("MULTI", StringComparison.CurrentCultureIgnoreCase))
+    {
+        transactionRepository.TryToAddToTransactionState(stream, arrayStrings[4..].ToString() ?? "");
+        return BuildResponse.Generate('+', "QUEUED");
+    }
+    
     return command.ToUpper() switch
     {
         "PING" => BuildResponse.Generate('+', "PONG"),

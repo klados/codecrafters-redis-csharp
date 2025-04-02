@@ -13,9 +13,15 @@ public class TransactionRepository : ITransactionRepository
         
     }
 
-    public bool TryToAddToTransactionState(NetworkStream stream)
+    public bool InitNewTransaction(NetworkStream stream)
     {
         return _transactionState.TryAdd(stream, new List<string>());
+    }
+
+    public void TryToAddToTransactionState(NetworkStream stream, string command)
+    {
+        _transactionState.TryGetValue(stream, out var list);
+        list?.Add(command);
     }
 
     public bool CheckIfKeyExists(NetworkStream stream)
