@@ -37,7 +37,18 @@ public static class ParseString
         return sb.ToString();
     }
 
-    public static string ParseStreamDataCellL(StreamDataCell data)
+    public static string ParseArrayOfCommands(string[] commands)
+    {
+        var sb = new StringBuilder();
+        sb.Append($"{commands.Length}\r\n");
+        foreach (var c in commands)
+        {
+            sb.Append($"{c}");
+        }
+        return sb.ToString();
+    }
+    
+    private static string ParseStreamDataCell(StreamDataCell data)
     {
         var sb = new StringBuilder();
         sb.Append("*2\r\n");
@@ -59,7 +70,7 @@ public static class ParseString
 
         foreach (var d in data)
         {
-            sb.Append(ParseStreamDataCellL(d));
+            sb.Append(ParseStreamDataCell(d));
         }
 
         return sb.ToString();

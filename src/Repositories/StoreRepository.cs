@@ -19,10 +19,13 @@ public class StoreRepository : IStoreRepository
             {
                 strValue = data,
                 ExpiredAt = ttl
-            })) return;
+            }))
+        {
+            return;
+        }
 
         var currentValue = storedData[key];
-        if (storedData.TryUpdate(key, new DataWithTtl()
+        if (!storedData.TryUpdate(key, new DataWithTtl()
             {
                 strValue = data,
                 ExpiredAt = ttl

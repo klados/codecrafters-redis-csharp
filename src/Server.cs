@@ -2,7 +2,6 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using codecrafters_redis.Commands;
-using codecrafters_redis.Helpers;
 using codecrafters_redis.Repositories;
 using codecrafters_redis.Repositories.Interfaces;
 using codecrafters_redis.Services;
@@ -17,7 +16,7 @@ serviceCollection.AddSingleton<Get>();
 serviceCollection.AddSingleton<Keys>();
 serviceCollection.AddSingleton<RedisType>();
 serviceCollection.AddSingleton<RedisStream>();
-serviceCollection.AddSingleton<Transactions>();
+serviceCollection.AddScoped<Transactions>();
 serviceCollection.AddScoped<IStoreRepository, StoreRepository>();
 serviceCollection.AddScoped<IStreamRepository, StreamRepository>();
 serviceCollection.AddScoped<ITransactionRepository, TransactionRepository>();
@@ -87,49 +86,5 @@ async Task HandleTask(NetworkStream stream)
 string ParseResp(byte[] bytes, NetworkStream stream)
 {
     var arrayStrings = Encoding.UTF8.GetString(bytes).Split("\r\n", StringSplitOptions.RemoveEmptyEntries);
-    var command = arrayStrings[2];
-    var argumentForCommand = arrayStrings.ElementAtOrDefault(4);
-
-    DateTime? ttl = null;
-    var time = arrayStrings.ElementAtOrDefault(10);
-    switch (arrayStrings.ElementAtOrDefault(8)?.ToUpper())
-    {
-        case "PX":
-            ttl = time == null ? null : DateTime.Now.AddMilliseconds(double.Parse(time));
-            break;
-        case "EX":
-            ttl = time == null ? null : DateTime.Now.AddSeconds(double.Parse(time));
-            break;
-    }
-    
-    // check if for the current NetworkStream we are running a transaction
-    var transactionRepository = serviceProvider.GetRequiredKeyedService<Transactions>(null);
-    if (transactionRepository.CheckIfKeyExists(stream) && 
-        !command.Equals("EXEC", StringComparison.CurrentCultureIgnoreCase) && 
-        !command.Equals("MULTI", StringComparison.CurrentCultureIgnoreCase))
-    {
-        transactionRepository.TryToAddToTransactionState(stream, arrayStrings[4..].ToString() ?? "");
-        return BuildResponse.Generate('+', "QUEUED");
-    }
-    
-    return command.ToUpper() switch
-    {
-        "PING" => BuildResponse.Generate('+', "PONG"),
-        "ECHO" => BuildResponse.Generate(argumentForCommand != null ? '$' : '-',
-            argumentForCommand ?? "wrong number of arguments for 'echo' command"),
-        "SET" => serviceProvider.GetRequiredKeyedService<Set>(null)
-            .SetCommand(argumentForCommand, arrayStrings.ElementAtOrDefault(6), ttl),
-        "GET" => serviceProvider.GetRequiredKeyedService<Get>(null).GetCommand(argumentForCommand),
-        "CONFIG" => serviceProvider.GetRequiredKeyedService<Config>(null)
-            .ConfigCmd(argumentForCommand ?? "", arrayStrings.ElementAtOrDefault(6) ?? ""),
-        "KEYS" => serviceProvider.GetRequiredKeyedService<Keys>(null).GetKeys(argumentForCommand),
-        "TYPE" => serviceProvider.GetRequiredKeyedService<RedisType>(null).GetType(argumentForCommand),
-        "XADD" => serviceProvider.GetRequiredKeyedService<RedisStream>(null).XADD(arrayStrings[4..]),
-        "XRANGE" => serviceProvider.GetRequiredKeyedService<RedisStream>(null).XRANGE(arrayStrings[4..]),
-        "XREAD" => serviceProvider.GetRequiredKeyedService<RedisStream>(null).XREAD(arrayStrings[4..]),
-        "INCR" => serviceProvider.GetRequiredKeyedService<Incr>(null).IncrCommand(argumentForCommand),
-        "MULTI" => serviceProvider.GetRequiredKeyedService<Transactions>(null).MultiCommand(stream),
-        "EXEC" => serviceProvider.GetRequiredKeyedService<Transactions>(null).ExecCommand(stream),
-        _ => BuildResponse.Generate('+', "UNKNOWN")
-    };
+    return CommandService.ParseCommand(serviceProvider, stream, arrayStrings);
 }

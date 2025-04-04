@@ -9,4 +9,6 @@ public interface ITransactionRepository
     bool CheckIfKeyExists(NetworkStream stream);
     List<string> GetTransactionsCommand(NetworkStream stream);
     void ClearStreamFromTransactionStateIfExists(NetworkStream stream);
+    public void StartExecution(NetworkStream stream);
+    bool CheckIfCommandShouldBeAddedToTransactionQueue(NetworkStream stream);
 }
