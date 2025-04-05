@@ -27,6 +27,7 @@ public static class CommandService
         // check if for the current NetworkStream we are running a transaction
         if (serviceProvider.GetRequiredKeyedService<Transactions>(null).CheckIfCommandShouldBeAddedToTransactionQueue(stream) &&
             !command.Equals("EXEC", StringComparison.CurrentCultureIgnoreCase) &&
+            !command.Equals("DISCARD", StringComparison.CurrentCultureIgnoreCase) &&
             !command.Equals("MULTI", StringComparison.CurrentCultureIgnoreCase))
         {
             serviceProvider.GetRequiredKeyedService<Transactions>(null)
@@ -50,6 +51,7 @@ public static class CommandService
             "INCR" => serviceProvider.GetRequiredKeyedService<Incr>(null).IncrCommand(argumentForCommand),
             "MULTI" => serviceProvider.GetRequiredKeyedService<Transactions>(null).MultiCommand(stream),
             "EXEC" => serviceProvider.GetRequiredKeyedService<Transactions>(null).ExecCommand(serviceProvider, stream),
+            "DISCARD" => serviceProvider.GetRequiredKeyedService<Transactions>(null).DiscardCommand(stream),
             _ => BuildResponse.Generate('+', "UNKNOWN")
         };
     }

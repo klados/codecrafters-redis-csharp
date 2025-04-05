@@ -50,6 +50,16 @@ public class Transactions
         return BuildResponse.Generate('*', ParseString.ParseArrayOfCommands(commandsResult.ToArray())); // fix it in the future
     }
 
+    public string DiscardCommand(NetworkStream stream)
+    {
+        if (!_transactionRepository.CheckIfKeyExists(stream))
+        {
+            return BuildResponse.Generate('-', "DISCARD without MULTI");
+        }
+        _transactionRepository.ClearStreamFromTransactionStateIfExists(stream);
+        return BuildResponse.Generate('+', "OK");
+    }
+    
     public bool CheckIfCommandShouldBeAddedToTransactionQueue(NetworkStream stream)
     {
         return _transactionRepository.CheckIfCommandShouldBeAddedToTransactionQueue(stream);
