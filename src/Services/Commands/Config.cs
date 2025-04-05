@@ -7,7 +7,8 @@ public class Config
     public static string Dir = "";
     public static string DbFilename = "";
     public static int Port = 6379;
-    
+    public static bool IsReplicaOf = false;
+
     public void ParseCommandLineArgs(string?[] args)
     {
         for (var i = 0; i < args.Length; i++)
@@ -24,7 +25,12 @@ public class Config
             }
             else if (args[i] == "--port" && i + 1 < args.Length)
             {
-                Port = Convert.ToInt32(args[i + 1] ?? "6379");   
+                Port = Convert.ToInt32(args[i + 1] ?? "6379");
+                i++;
+            }
+            else if (args[i] == "--replicaof")
+            {
+                IsReplicaOf = true;
             }
         }
     }
