@@ -16,6 +16,7 @@ serviceCollection.AddSingleton<Get>();
 serviceCollection.AddSingleton<Keys>();
 serviceCollection.AddSingleton<RedisType>();
 serviceCollection.AddSingleton<RedisStream>();
+serviceCollection.AddSingleton<SyncMasterSlave>();
 serviceCollection.AddSingleton<Info>();
 serviceCollection.AddScoped<Transactions>();
 serviceCollection.AddScoped<IStoreRepository, StoreRepository>();
@@ -27,6 +28,11 @@ var serviceProvider = serviceCollection.BuildServiceProvider();
 serviceProvider.GetRequiredKeyedService<Config>(null).ParseCommandLineArgs(args);
 serviceProvider.GetRequiredKeyedService<RdbService>(null).LoadDataFromFile();
 
+if (Config.IsReplicaOf)
+{
+    serviceProvider.GetRequiredKeyedService<SyncMasterSlave>(null).SlaveSyncWithMaster();
+}
+
 TcpListener server = new TcpListener(IPAddress.Any, Config.Port);
 Console.WriteLine($"Server started on port {Config.Port}");
 server.Start();
@@ -35,7 +41,7 @@ try
 {
     while (true)
     {
-        // var socket = server.AcceptSocket(); // wait for client
+        // wait for client
         TcpClient client = server.AcceptTcpClient();
         Console.WriteLine("Client connected");
         

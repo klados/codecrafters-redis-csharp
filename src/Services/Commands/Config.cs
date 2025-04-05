@@ -8,7 +8,8 @@ public class Config
     public static string DbFilename = "";
     public static int Port = 6379;
     public static bool IsReplicaOf = false;
-
+    public static string MasterRedisNode = "";
+    
     public void ParseCommandLineArgs(string?[] args)
     {
         for (var i = 0; i < args.Length; i++)
@@ -31,6 +32,8 @@ public class Config
             else if (args[i] == "--replicaof")
             {
                 IsReplicaOf = true;
+                MasterRedisNode = args[i + 1] ?? "";
+                i++;
             }
         }
     }
