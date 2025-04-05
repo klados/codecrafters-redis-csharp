@@ -16,6 +16,7 @@ serviceCollection.AddSingleton<Get>();
 serviceCollection.AddSingleton<Keys>();
 serviceCollection.AddSingleton<RedisType>();
 serviceCollection.AddSingleton<RedisStream>();
+serviceCollection.AddSingleton<Info>();
 serviceCollection.AddScoped<Transactions>();
 serviceCollection.AddScoped<IStoreRepository, StoreRepository>();
 serviceCollection.AddScoped<IStreamRepository, StreamRepository>();
