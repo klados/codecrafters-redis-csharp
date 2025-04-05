@@ -26,8 +26,8 @@ var serviceProvider = serviceCollection.BuildServiceProvider();
 serviceProvider.GetRequiredKeyedService<Config>(null).ParseCommandLineArgs(args);
 serviceProvider.GetRequiredKeyedService<RdbService>(null).LoadDataFromFile();
 
-TcpListener server = new TcpListener(IPAddress.Any, 6379);
-Console.WriteLine("Server started on port 6379");
+TcpListener server = new TcpListener(IPAddress.Any, Config.Port);
+Console.WriteLine($"Server started on port {Config.Port}");
 server.Start();
 
 try
