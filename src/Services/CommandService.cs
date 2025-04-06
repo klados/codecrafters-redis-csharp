@@ -53,6 +53,7 @@ public static class CommandService
             "EXEC" => serviceProvider.GetRequiredKeyedService<Transactions>(null).ExecCommand(serviceProvider, stream),
             "DISCARD" => serviceProvider.GetRequiredKeyedService<Transactions>(null).DiscardCommand(stream),
             "INFO" => serviceProvider.GetRequiredKeyedService<Info>(null).InfoCommand(arrayStrings[4..]),
+            "REPLCONF" => BuildResponse.Generate('+', "OK"),
             _ => BuildResponse.Generate('+', "UNKNOWN")
         };
     }
