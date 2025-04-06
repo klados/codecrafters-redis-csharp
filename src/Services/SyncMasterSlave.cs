@@ -50,6 +50,14 @@ public class SyncMasterSlave
                     bytesRead = stream.Read(receivedData, 0, receivedData.Length);
                     responseData = System.Text.Encoding.ASCII.GetString(receivedData, 0, bytesRead);
                     Console.WriteLine($"master replyconf2 response: {responseData}");
+                    
+                    string psync = "3\r\n$5\r\nPSYNC\r\n$1\r\n?\r\n$2\r\n-1\r\n";
+                    byte[] psyncData = Encoding.ASCII.GetBytes(BuildResponse.Generate('*', psync));
+                    stream.Write(psyncData, 0, psyncData.Length);
+                    
+                    bytesRead = stream.Read(receivedData, 0, receivedData.Length);
+                    responseData = System.Text.Encoding.ASCII.GetString(receivedData, 0, bytesRead);
+                    Console.WriteLine($"master replyconf2 response: {responseData}");
                 }
             }
         }
