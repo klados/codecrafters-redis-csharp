@@ -54,7 +54,7 @@ public static class CommandService
             "DISCARD" => serviceProvider.GetRequiredKeyedService<Transactions>(null).DiscardCommand(stream),
             "INFO" => serviceProvider.GetRequiredKeyedService<Info>(null).InfoCommand(arrayStrings[4..]),
             "REPLCONF" => BuildResponse.Generate('+', "OK"),
-            "PSYNC" => BuildResponse.Generate('+', $"FULLRESYNC 091465c549348f7cf6f0c7792e33e7e1fbb5ae74 0"),
+            "PSYNC" => serviceProvider.GetRequiredKeyedService<SyncMasterSlave>(null).MasterPsync(stream),
             _ => BuildResponse.Generate('+', "UNKNOWN")
         };
     }
