@@ -9,6 +9,8 @@ public class SyncMasterSlave
 {
     public string MasterPsync(NetworkStream stream)
     {
+        SyncHelper.SlaveConnected(stream);
+        
         var res = BuildResponse.Generate('+', $"FULLRESYNC 091465c549348f7cf6f0c7792e33e7e1fbb5ae74 0");
         stream.Write(Encoding.ASCII.GetBytes(res), 0, res?.Length ?? 0);
 
