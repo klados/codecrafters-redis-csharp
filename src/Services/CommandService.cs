@@ -12,7 +12,8 @@ public static class CommandService
         Console.WriteLine($"command to be parsed {string.Join(" ",arrayStrings)}, {client.Client.RemoteEndPoint} | is slave:{Config.IsReplicaOf}");
         NetworkStream stream = client.GetStream();
 
-        var command = arrayStrings[2];
+        var command = arrayStrings.ElementAtOrDefault(2);
+        if (command == null) return "";
         var argumentForCommand = arrayStrings.ElementAtOrDefault(4);
 
         DateTime? ttl = null;

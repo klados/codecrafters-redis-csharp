@@ -10,6 +10,12 @@ public class SyncMasterSlave
 {
     public string REPLCONFCommand(TcpClient client, params string[] arguments)
     {
+        if (arguments[0].ToUpper().Equals("GETACK", StringComparison.CurrentCultureIgnoreCase))
+        {
+            Console.WriteLine("return ACK");
+            return BuildResponse.Generate('*', "3\r\n$8\r\nREPLCONF\r\n$3\r\nACK\r\n$1\r\n0\r\n");
+        }
+
         try
         {
             SyncHelper.SlaveConnected(client);
@@ -20,11 +26,11 @@ public class SyncMasterSlave
             return BuildResponse.Generate('+', "OK");
         }
     }
-    
+
     public string MasterPsync(TcpClient client)
     {
         NetworkStream stream = client.GetStream();
-        
+
         var res = BuildResponse.Generate('+', $"FULLRESYNC 091465c549348f7cf6f0c7792e33e7e1fbb5ae74 0");
         stream.Write(Encoding.ASCII.GetBytes(res), 0, res?.Length ?? 0);
 
@@ -78,7 +84,7 @@ public class SyncMasterSlave
 
             bytesRead = stream.Read(receivedData, 0, receivedData.Length);
             responseData = System.Text.Encoding.ASCII.GetString(receivedData, 0, bytesRead);
-            Console.WriteLine($"##master replyconf2 response: {responseData}");
+            // Console.WriteLine($"##master replyconf2 response: {responseData}");
 
             string psync = "3\r\n$5\r\nPSYNC\r\n$1\r\n?\r\n$2\r\n-1\r\n";
             byte[] psyncData = Encoding.ASCII.GetBytes(BuildResponse.Generate('*', psync));
@@ -86,19 +92,27 @@ public class SyncMasterSlave
 
             bytesRead = stream.Read(receivedData, 0, receivedData.Length);
             responseData = System.Text.Encoding.ASCII.GetString(receivedData, 0, bytesRead);
-            Console.WriteLine($"master replyconf2 response: {responseData}");
+            // Console.WriteLine($"master replyconf2 response: {responseData}");
 
             var rdbFile = stream.Read(receivedData, 0, receivedData.Length);
             responseData = System.Text.Encoding.ASCII.GetString(receivedData, 0, rdbFile);
             Console.WriteLine($"##rdb file received: {responseData}");
+            
+            if (responseData.Contains("GETACK", StringComparison.OrdinalIgnoreCase))
+            {
+                Console.WriteLine("send early ack");
+                var ackMessage = Encoding.ASCII.GetBytes(BuildResponse.Generate('*', "3\r\n$8\r\nREPLCONF\r\n$3\r\nACK\r\n$1\r\n0\r\n"));
+                stream.Write(ackMessage, 0, ackMessage.Length);
+            }
 
             if (responseData[0] == '*')
             {
-                Console.WriteLine($"responseData: {responseData}");
+                // Console.WriteLine($"responseData: {responseData}");
                 foreach (var command in responseData.Split("*")[1..])
                 {
-                    Console.WriteLine($"## command to insert: {command}");
-                    CommandService.ParseCommand(serviceProvider, client, $"*{command}".Split("\r\n", StringSplitOptions.RemoveEmptyEntries));
+                    // Console.WriteLine($"## command to insert: {command}");
+                    CommandService.ParseCommand(serviceProvider, client,
+                        $"*{command}".Split("\r\n", StringSplitOptions.RemoveEmptyEntries));
                 }
             }
 
@@ -110,10 +124,12 @@ public class SyncMasterSlave
                     var propagatedCommandsBytes = stream.Read(receivedData, 0, receivedData.Length);
                     if (propagatedCommandsBytes == 0) break;
 
-                    var propagatedCommands = System.Text.Encoding.ASCII.GetString(receivedData, 0, propagatedCommandsBytes);
+                    var propagatedCommands =
+                        System.Text.Encoding.ASCII.GetString(receivedData, 0, propagatedCommandsBytes);
                     foreach (var command in propagatedCommands.Split("*")[1..])
                     {
-                        CommandService.ParseCommand(serviceProvider, client, $"*{command}".Split("\r\n", StringSplitOptions.RemoveEmptyEntries));
+                        CommandService.ParseCommand(serviceProvider, client,
+                            $"*{command}".Split("\r\n", StringSplitOptions.RemoveEmptyEntries));
                     }
                 }
             });
