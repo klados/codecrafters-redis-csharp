@@ -20,7 +20,7 @@ public class Set
         }
 
         _storeRepository.Add(key, data, ttl);
-        SyncHelper.SyncCommand($"set {key} {data} {ttl}");
+        if(!Config.IsReplicaOf) SyncHelper.SyncCommand($"set {key} {data} {ttl}");
         return BuildResponse.Generate('+', "OK");
     }
 }

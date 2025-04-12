@@ -23,8 +23,10 @@ public class Transactions
             : BuildResponse.Generate('-', "MULTI calls can not be nested");
     }
 
-    public string ExecCommand(ServiceProvider serviceProvider, NetworkStream stream)
+    public string ExecCommand(ServiceProvider serviceProvider, TcpClient client)
     {
+        NetworkStream stream = client.GetStream();
+
         if (!_transactionRepository.CheckIfKeyExists(stream))
         {
             return BuildResponse.Generate('-', "EXEC without MULTI");
@@ -42,10 +44,9 @@ public class Transactions
         var commandsResult = new List<string>();
         foreach (var command in commandsToExecute)
         {
-            commandsResult.Add(CommandService.ParseCommand(serviceProvider, stream, command.Split(',')));
+            commandsResult.Add(CommandService.ParseCommand(serviceProvider, client, command.Split(',')));
         }
 
-        _transactionRepository.ClearStreamFromTransactionStateIfExists(stream);
         _transactionRepository.ClearStreamFromTransactionStateIfExists(stream);
         return BuildResponse.Generate('*', ParseString.ParseArrayOfCommands(commandsResult.ToArray())); // fix it in the future
     }

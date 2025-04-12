@@ -5,20 +5,29 @@ namespace codecrafters_redis.Helpers;
 
 public static class SyncHelper
 {
-    private static readonly List<Stream> _slavesStream = new();
+    private static readonly HashSet<TcpClient> SlavesStream = [];
 
-    public static void SlaveConnected(NetworkStream stream)
+    public static void SlaveConnected(TcpClient client)
     {
-        Console.WriteLine("slave connected");
-        _slavesStream.Add(stream);
+        SlavesStream.Add(client);
     }
 
     public static void SyncCommand(string command)
     {
-        foreach (var stream in _slavesStream)
+        var respArray = ParseString.ParseArray(command.TrimEnd().Split(' '));
+        foreach (var slave in SlavesStream)
         {
-            var respArray = ParseString.ParseArray(command.TrimEnd().Split(' '));
-            stream.Write(Encoding.ASCII.GetBytes(BuildResponse.Generate('*', respArray)));
+            try
+            {
+                NetworkStream stream = slave.GetStream();
+                Console.WriteLine($"##MASTER sync command: {command}");
+                stream.Write(Encoding.ASCII.GetBytes(BuildResponse.Generate('*', respArray)));
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"failed to sync with slave: { e.Message }");
+                SlavesStream.Remove(slave);
+            }
         }
     }
 }

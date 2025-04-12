@@ -28,10 +28,14 @@ var serviceProvider = serviceCollection.BuildServiceProvider();
 serviceProvider.GetRequiredKeyedService<Config>(null).ParseCommandLineArgs(args);
 serviceProvider.GetRequiredKeyedService<RdbService>(null).LoadDataFromFile();
 
-if (Config.IsReplicaOf)
+Task.Run(async () =>
 {
-    serviceProvider.GetRequiredKeyedService<SyncMasterSlave>(null).SlaveSyncWithMaster();
-}
+    if (Config.IsReplicaOf)
+    {
+        serviceProvider.GetRequiredKeyedService<SyncMasterSlave>(null).SlaveSyncWithMaster(serviceProvider);
+    }
+});
+
 
 TcpListener server = new TcpListener(IPAddress.Any, Config.Port);
 Console.WriteLine($"Server started on port {Config.Port}");
@@ -43,10 +47,7 @@ try
     {
         // wait for client
         TcpClient client = server.AcceptTcpClient();
-        Console.WriteLine("Client connected");
-        
-        NetworkStream stream = client.GetStream();
-        Task.Run(() => HandleTask(stream));
+        Task.Run(() => HandleTask(client));
     }
 }
 catch (Exception e)
@@ -61,8 +62,10 @@ finally
 return;
 
 
-async Task HandleTask(NetworkStream stream)
+async Task HandleTask(TcpClient client)
 {
+    Console.WriteLine($"client ip: {client.Client.RemoteEndPoint}");
+    NetworkStream stream = client.GetStream();
     try
     {
         while (true)
@@ -75,23 +78,22 @@ async Task HandleTask(NetworkStream stream)
                 break;
             }
 
-            var response = ParseResp(buffer, stream);
+            var response = ParseResp(buffer, client);
             await stream.WriteAsync(Encoding.ASCII.GetBytes(response));
         }
     }
     catch (Exception e)
     {
-        Console.WriteLine($"An error occurred: {e.Message}");
+        Console.WriteLine($"An error occurred: {e}");
     }
     finally
     {
-        stream.Close();
         Console.WriteLine("Client connection closed");
     }
 }
 
-string ParseResp(byte[] bytes, NetworkStream stream)
+string ParseResp(byte[] bytes, TcpClient client)
 {
     var arrayStrings = Encoding.UTF8.GetString(bytes).Split("\r\n", StringSplitOptions.RemoveEmptyEntries);
-    return CommandService.ParseCommand(serviceProvider, stream, arrayStrings);
+    return CommandService.ParseCommand(serviceProvider, client, arrayStrings);
 }

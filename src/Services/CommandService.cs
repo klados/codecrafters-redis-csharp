@@ -7,8 +7,11 @@ namespace codecrafters_redis.Services;
 
 public static class CommandService 
 {
-    public static string ParseCommand(ServiceProvider serviceProvider, NetworkStream stream, string[] arrayStrings)
+    public static string ParseCommand(ServiceProvider serviceProvider, TcpClient client, string[] arrayStrings)
     {
+        Console.WriteLine($"command to be parsed {string.Join(" ",arrayStrings)}, {client.Client.RemoteEndPoint} | is slave:{Config.IsReplicaOf}");
+        NetworkStream stream = client.GetStream();
+
         var command = arrayStrings[2];
         var argumentForCommand = arrayStrings.ElementAtOrDefault(4);
 
@@ -50,11 +53,11 @@ public static class CommandService
             "XREAD" => serviceProvider.GetRequiredKeyedService<RedisStream>(null).XREAD(arrayStrings[4..]),
             "INCR" => serviceProvider.GetRequiredKeyedService<Incr>(null).IncrCommand(argumentForCommand),
             "MULTI" => serviceProvider.GetRequiredKeyedService<Transactions>(null).MultiCommand(stream),
-            "EXEC" => serviceProvider.GetRequiredKeyedService<Transactions>(null).ExecCommand(serviceProvider, stream),
+            "EXEC" => serviceProvider.GetRequiredKeyedService<Transactions>(null).ExecCommand(serviceProvider, client),
             "DISCARD" => serviceProvider.GetRequiredKeyedService<Transactions>(null).DiscardCommand(stream),
             "INFO" => serviceProvider.GetRequiredKeyedService<Info>(null).InfoCommand(arrayStrings[4..]),
-            "REPLCONF" => BuildResponse.Generate('+', "OK"),
-            "PSYNC" => serviceProvider.GetRequiredKeyedService<SyncMasterSlave>(null).MasterPsync(stream),
+            "REPLCONF" => serviceProvider.GetRequiredKeyedService<SyncMasterSlave>(null).REPLCONFCommand(client,arrayStrings[4..]),
+            "PSYNC" => serviceProvider.GetRequiredKeyedService<SyncMasterSlave>(null).MasterPsync(client),
             _ => BuildResponse.Generate('+', "UNKNOWN")
         };
     }
