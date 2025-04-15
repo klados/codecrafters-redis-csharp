@@ -59,6 +59,7 @@ public static class CommandService
             "INFO" => serviceProvider.GetRequiredKeyedService<Info>(null).InfoCommand(arrayStrings[4..]),
             "REPLCONF" => serviceProvider.GetRequiredKeyedService<SyncMasterSlave>(null).REPLCONFCommand(client,arrayStrings[4..]),
             "PSYNC" => serviceProvider.GetRequiredKeyedService<SyncMasterSlave>(null).MasterPsync(client),
+            "WAIT" => serviceProvider.GetRequiredKeyedService<Wait>(null).WaitCommand(),
             _ => BuildResponse.Generate('+', "UNKNOWN")
         };
     }

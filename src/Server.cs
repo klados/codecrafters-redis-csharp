@@ -24,6 +24,7 @@ serviceCollection.AddScoped<IStreamRepository, StreamRepository>();
 serviceCollection.AddScoped<ITransactionRepository, TransactionRepository>();
 serviceCollection.AddScoped<RdbService>();
 serviceCollection.AddSingleton<Ping>();
+serviceCollection.AddSingleton<Wait>();
 var serviceProvider = serviceCollection.BuildServiceProvider();
 
 serviceProvider.GetRequiredKeyedService<Config>(null).ParseCommandLineArgs(args);
