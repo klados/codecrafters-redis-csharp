@@ -41,7 +41,7 @@ public static class CommandService
 
         return command.ToUpper() switch
         {
-            "PING" => BuildResponse.Generate('+', "PONG"),
+            "PING" => serviceProvider.GetRequiredKeyedService<Ping>(null).PingCommand(),
             "ECHO" => BuildResponse.Generate(argumentForCommand != null ? '$' : '-',
                 argumentForCommand ?? "wrong number of arguments for 'echo' command"),
             "SET" => serviceProvider.GetRequiredKeyedService<Set>(null).SetCommand(argumentForCommand, arrayStrings.ElementAtOrDefault(6), ttl),

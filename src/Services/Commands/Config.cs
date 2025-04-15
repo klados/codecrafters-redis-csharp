@@ -10,6 +10,26 @@ public class Config
     public static bool IsReplicaOf = false;
     public static string MasterRedisNode = "";
     
+    private static readonly object _lockObject = new object();
+    public static int BytesSent = 0;
+    public static bool IsSyncHandshakeActive = false;
+    
+    public static int GetCounter()
+    {
+        lock (_lockObject)
+        {
+            return BytesSent;
+        }
+    }
+
+    public static void IncrementCounter(int increment)
+    {
+        lock (_lockObject)
+        {
+            BytesSent += increment;
+        }
+    }
+    
     public void ParseCommandLineArgs(string?[] args)
     {
         for (var i = 0; i < args.Length; i++)

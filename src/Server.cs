@@ -23,6 +23,7 @@ serviceCollection.AddScoped<IStoreRepository, StoreRepository>();
 serviceCollection.AddScoped<IStreamRepository, StreamRepository>();
 serviceCollection.AddScoped<ITransactionRepository, TransactionRepository>();
 serviceCollection.AddScoped<RdbService>();
+serviceCollection.AddSingleton<Ping>();
 var serviceProvider = serviceCollection.BuildServiceProvider();
 
 serviceProvider.GetRequiredKeyedService<Config>(null).ParseCommandLineArgs(args);
@@ -79,6 +80,12 @@ async Task HandleTask(TcpClient client)
             }
 
             var response = ParseResp(buffer, client);
+            Console.WriteLine($"response for the client: {response}, len: {response.Length}");
+            if (response.Length == 0)
+            {
+                Console.WriteLine($"zero response");
+                continue; // response = "+ON\r\n";
+            }
             await stream.WriteAsync(Encoding.ASCII.GetBytes(response));
         }
     }

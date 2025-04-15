@@ -12,8 +12,16 @@ public class SyncMasterSlave
     {
         if (arguments[0].ToUpper().Equals("GETACK", StringComparison.CurrentCultureIgnoreCase))
         {
-            Console.WriteLine("return ACK");
-            return BuildResponse.Generate('*', "3\r\n$8\r\nREPLCONF\r\n$3\r\nACK\r\n$1\r\n0\r\n");
+            string res;
+
+            var counterValue = Config.GetCounter();
+            res =
+                $"3\r\n$8\r\nREPLCONF\r\n$3\r\nACK\r\n${counterValue.ToString().Length}\r\n{counterValue}\r\n";
+            var tmp = 35 + counterValue.ToString().Length + counterValue.ToString().Length.ToString().Length;
+            Console.WriteLine($"GETACK 2 !!!: {counterValue} ({tmp + counterValue})");
+            Config.IncrementCounter(tmp);
+
+            return BuildResponse.Generate('*', res);
         }
 
         try
@@ -47,7 +55,8 @@ public class SyncMasterSlave
     {
         var masterRedisNodeHost = Config.MasterRedisNode.Split(" ")[0];
         var masterRedisNodePort = int.Parse(Config.MasterRedisNode.Split(" ")[1]);
-
+        var GETACKOnese = false;
+        
         if (masterRedisNodeHost.Length == 0 || masterRedisNodePort == 0)
         {
             Console.WriteLine("Master redis node host or port is empty");
@@ -59,84 +68,91 @@ public class SyncMasterSlave
             var client = new TcpClient(masterRedisNodeHost, masterRedisNodePort);
             NetworkStream stream = client.GetStream();
 
-            var receivedData = new Byte[256];
+            var receivedData = new Byte[1024];
 
             string pingMessage = "1\r\n$4\r\nPING\r\n";
             byte[] pingData = Encoding.ASCII.GetBytes(BuildResponse.Generate('*', pingMessage));
             stream.Write(pingData, 0, pingData.Length);
-            Console.WriteLine("Ping message sent");
 
-            var bytesRead = stream.Read(receivedData, 0, receivedData.Length);
-            var responseData = System.Text.Encoding.ASCII.GetString(receivedData, 0, bytesRead);
-            Console.WriteLine($"master ping response: {responseData}");
-
-            string listeningPort = $"3\r\n$8\r\nREPLCONF\r\n$14\r\nlistening-port\r\n$4\r\n{Config.Port}\r\n";
-            byte[] listeningPortData = Encoding.ASCII.GetBytes(BuildResponse.Generate('*', listeningPort));
-            stream.Write(listeningPortData, 0, listeningPortData.Length);
-
-            bytesRead = stream.Read(receivedData, 0, receivedData.Length);
-            responseData = System.Text.Encoding.ASCII.GetString(receivedData, 0, bytesRead);
-            Console.WriteLine($"master replyconf response: {responseData}");
-
-            string capa = "3\r\n$8\r\nREPLCONF\r\n$4\r\ncapa\r\n$6\r\npsync2\r\n";
-            byte[] capaData = Encoding.ASCII.GetBytes(BuildResponse.Generate('*', capa));
-            stream.Write(capaData, 0, capaData.Length);
-
-            bytesRead = stream.Read(receivedData, 0, receivedData.Length);
-            responseData = System.Text.Encoding.ASCII.GetString(receivedData, 0, bytesRead);
-            // Console.WriteLine($"##master replyconf2 response: {responseData}");
-
-            string psync = "3\r\n$5\r\nPSYNC\r\n$1\r\n?\r\n$2\r\n-1\r\n";
-            byte[] psyncData = Encoding.ASCII.GetBytes(BuildResponse.Generate('*', psync));
-            stream.Write(psyncData, 0, psyncData.Length);
-
-            bytesRead = stream.Read(receivedData, 0, receivedData.Length);
-            responseData = System.Text.Encoding.ASCII.GetString(receivedData, 0, bytesRead);
-            // Console.WriteLine($"master replyconf2 response: {responseData}");
-
-            var rdbFile = stream.Read(receivedData, 0, receivedData.Length);
-            responseData = System.Text.Encoding.ASCII.GetString(receivedData, 0, rdbFile);
-            Console.WriteLine($"##rdb file received: {responseData}");
-            
-            if (responseData.Contains("GETACK", StringComparison.OrdinalIgnoreCase))
+            bool psyncSend = false;
+            while (true)
             {
-                Console.WriteLine("send early ack");
-                var ackMessage = Encoding.ASCII.GetBytes(BuildResponse.Generate('*', "3\r\n$8\r\nREPLCONF\r\n$3\r\nACK\r\n$1\r\n0\r\n"));
-                stream.Write(ackMessage, 0, ackMessage.Length);
-            }
+                var bytesRead = stream.Read(receivedData, 0, receivedData.Length);
+                if (bytesRead == 0) break;
+                var responseData = System.Text.Encoding.ASCII.GetString(receivedData, 0, bytesRead);
+                Console.WriteLine($"responseData: {responseData}");
 
-            if (responseData[0] == '*')
-            {
-                // Console.WriteLine($"responseData: {responseData}");
-                foreach (var command in responseData.Split("*")[1..])
+                if (responseData.ToUpper().Contains("PONG"))
                 {
-                    // Console.WriteLine($"## command to insert: {command}");
-                    CommandService.ParseCommand(serviceProvider, client,
-                        $"*{command}".Split("\r\n", StringSplitOptions.RemoveEmptyEntries));
-                }
-            }
-
-            Task.Run(() =>
-            {
-                while (true)
+                    var listeningPort = $"3\r\n$8\r\nREPLCONF\r\n$14\r\nlistening-port\r\n$4\r\n{Config.Port}\r\n";
+                    var listeningPortData = Encoding.ASCII.GetBytes(BuildResponse.Generate('*', listeningPort));
+                    Config.IsSyncHandshakeActive = true;
+                    stream.Write(listeningPortData, 0, listeningPortData.Length);
+                } 
+                if (responseData[0] == '*')
                 {
-                    Thread.Sleep(1000);
-                    var propagatedCommandsBytes = stream.Read(receivedData, 0, receivedData.Length);
-                    if (propagatedCommandsBytes == 0) break;
-
-                    var propagatedCommands =
-                        System.Text.Encoding.ASCII.GetString(receivedData, 0, propagatedCommandsBytes);
-                    foreach (var command in propagatedCommands.Split("*")[1..])
+                    foreach (var command in responseData.Split("*")[1..])
                     {
+                        if (command.ToUpper().Contains("REPLCONF")) continue;
+                        Console.WriteLine($"    command: {command}");
                         CommandService.ParseCommand(serviceProvider, client,
                             $"*{command}".Split("\r\n", StringSplitOptions.RemoveEmptyEntries));
                     }
                 }
-            });
+                if (responseData.Contains("GETACK", StringComparison.OrdinalIgnoreCase))
+                {
+                    System.Threading.Thread.Sleep(300);   
+                    byte[] ackMessage; 
+                    var counterValue = Config.GetCounter();
+                    ackMessage = Encoding.ASCII.GetBytes(BuildResponse.Generate('*',
+                        $"3\r\n$8\r\nREPLCONF\r\n$3\r\nACK\r\n${counterValue.ToString().Length}\r\n{counterValue}\r\n"));
+                    Console.WriteLine(
+                        $"!GETACK!!! added {counterValue} ({35 + counterValue.ToString().Length + counterValue.ToString().Length.ToString().Length})");
+                    // Config.IncrementCounter(35 + counterValue.ToString().Length +
+                                            // counterValue.ToString().Length.ToString().Length);
+                    Config.IncrementCounter(37);
+                    stream.Write(ackMessage, 0, ackMessage.Length);
+                }
+                else if (responseData.ToUpper().Contains("OK") && !psyncSend)
+                {
+                    psyncSend = true;
+                    var capa = "3\r\n$8\r\nREPLCONF\r\n$4\r\ncapa\r\n$6\r\npsync2\r\n";
+                    var capaData = Encoding.ASCII.GetBytes(BuildResponse.Generate('*', capa));
+                    stream.Write(capaData, 0, capaData.Length);
+
+                    var psync = "3\r\n$5\r\nPSYNC\r\n$1\r\n?\r\n$2\r\n-1\r\n";
+                    var psyncData = Encoding.ASCII.GetBytes(BuildResponse.Generate('*', psync));
+                    stream.Write(psyncData, 0, psyncData.Length);
+                }
+
+            }
+            
+            // Task.Run(() =>
+            // {
+            //     while (true)
+            //     {
+            //         var propagatedCommandsBytes = stream.Read(receivedData, 0, receivedData.Length);
+            //         if (propagatedCommandsBytes == 0) break;
+            //         Console.WriteLine($"receivedData: {propagatedCommandsBytes} bytes");
+            //         var propagatedCommands =
+            //             System.Text.Encoding.ASCII.GetString(receivedData, 0, propagatedCommandsBytes);
+            //         
+            //         foreach (var command in propagatedCommands.Split("*")[1..])
+            //         {
+            //             if(command.Trim() == "*") continue;
+            //             CommandService.ParseCommand(serviceProvider, client,
+            //                 $"*{command}".Split("\r\n", StringSplitOptions.RemoveEmptyEntries));
+            //         }
+            //     }
+            // });
         }
         catch (Exception e)
         {
             Console.WriteLine($"Error during sync with master redis node : {e.Message}");
+        }
+        finally
+        {
+            // Config.IsSyncHandshakeActive = false;
         }
     }
 }
