@@ -7,6 +7,11 @@ public static class SyncHelper
 {
     private static readonly HashSet<TcpClient> SlavesStream = [];
 
+    public static int GetSlavesCount()
+    {
+        return SlavesStream.Count;
+    }
+    
     public static void SlaveConnected(TcpClient client)
     {
         SlavesStream.Add(client);

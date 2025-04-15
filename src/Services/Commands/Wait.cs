@@ -6,6 +6,6 @@ public class Wait
 {
     public string WaitCommand()
     {
-        return BuildResponse.Generate(':', "0");
+        return BuildResponse.Generate(':', SyncHelper.GetSlavesCount().ToString());
     }
 }
