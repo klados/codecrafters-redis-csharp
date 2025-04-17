@@ -11,14 +11,14 @@ public class Config
     public static string MasterRedisNode = "";
     
     private static readonly object _lockObject = new object();
-    public static int BytesSent = 0;
+    private static int _bytesSent = 0;
     public static bool IsSyncHandshakeActive = false;
     
     public static int GetCounter()
     {
         lock (_lockObject)
         {
-            return BytesSent;
+            return _bytesSent;
         }
     }
 
@@ -26,7 +26,7 @@ public class Config
     {
         lock (_lockObject)
         {
-            BytesSent += increment;
+            _bytesSent += increment;
         }
     }
     

@@ -13,20 +13,21 @@ public class SyncMasterSlave
         if (arguments[0].ToUpper().Equals("GETACK", StringComparison.CurrentCultureIgnoreCase))
         {
             string res;
-
             var counterValue = Config.GetCounter();
             res =
                 $"3\r\n$8\r\nREPLCONF\r\n$3\r\nACK\r\n${counterValue.ToString().Length}\r\n{counterValue}\r\n";
             var tmp = 35 + counterValue.ToString().Length + counterValue.ToString().Length.ToString().Length;
             Console.WriteLine($"GETACK 2 !!!: {counterValue} ({tmp + counterValue})");
             Config.IncrementCounter(tmp);
-
+            
             return BuildResponse.Generate('*', res);
         }
 
         try
         {
             SyncHelper.SlaveConnected(client);
+            SyncHelper.WaitAckCounterIncr();
+            Console.WriteLine($"========== increase! {SyncHelper.GetWaitAckCounter()}");
             return BuildResponse.Generate('+', "OK");
         }
         catch (Exception e)
@@ -108,8 +109,6 @@ public class SyncMasterSlave
                         $"3\r\n$8\r\nREPLCONF\r\n$3\r\nACK\r\n${counterValue.ToString().Length}\r\n{counterValue}\r\n"));
                     Console.WriteLine(
                         $"!GETACK!!! added {counterValue} ({35 + counterValue.ToString().Length + counterValue.ToString().Length.ToString().Length})");
-                    // Config.IncrementCounter(35 + counterValue.ToString().Length +
-                                            // counterValue.ToString().Length.ToString().Length);
                     Config.IncrementCounter(37);
                     stream.Write(ackMessage, 0, ackMessage.Length);
                 }
@@ -126,25 +125,6 @@ public class SyncMasterSlave
                 }
 
             }
-            
-            // Task.Run(() =>
-            // {
-            //     while (true)
-            //     {
-            //         var propagatedCommandsBytes = stream.Read(receivedData, 0, receivedData.Length);
-            //         if (propagatedCommandsBytes == 0) break;
-            //         Console.WriteLine($"receivedData: {propagatedCommandsBytes} bytes");
-            //         var propagatedCommands =
-            //             System.Text.Encoding.ASCII.GetString(receivedData, 0, propagatedCommandsBytes);
-            //         
-            //         foreach (var command in propagatedCommands.Split("*")[1..])
-            //         {
-            //             if(command.Trim() == "*") continue;
-            //             CommandService.ParseCommand(serviceProvider, client,
-            //                 $"*{command}".Split("\r\n", StringSplitOptions.RemoveEmptyEntries));
-            //         }
-            //     }
-            // });
         }
         catch (Exception e)
         {

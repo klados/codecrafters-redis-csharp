@@ -82,6 +82,7 @@ async Task HandleTask(TcpClient client)
 
             var response = ParseResp(buffer, client);
             Console.WriteLine($"response for the client: {response}, len: {response.Length}");
+
             if (response.Length == 0)
             {
                 Console.WriteLine($"zero response");
