@@ -105,7 +105,6 @@ public class SyncMasterSlave
 
                 if (responseData.Contains("GETACK", StringComparison.OrdinalIgnoreCase))
                 {
-                    // System.Threading.Thread.Sleep(300);   
                     byte[] ackMessage;
                     var counterValue = Config.GetCounter();
                     ackMessage = Encoding.ASCII.GetBytes(BuildResponse.Generate('*',
@@ -133,10 +132,6 @@ public class SyncMasterSlave
         catch (Exception e)
         {
             Console.WriteLine($"Error during sync with master redis node : {e.Message}");
-        }
-        finally
-        {
-            // Config.IsSyncHandshakeActive = false;
         }
     }
 }

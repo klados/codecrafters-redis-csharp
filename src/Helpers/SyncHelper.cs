@@ -7,25 +7,13 @@ namespace codecrafters_redis.Helpers;
 
 public static class SyncHelper
 {
-    // private static readonly HashSet<TcpClient> SlavesStream = [];
     private static readonly ConcurrentDictionary<string, ConnectedSlavesData> SlavesStream = new();
-    // private static bool _waitRunning = false;
     public static bool FinishFullSync = false;
     
-    // public static bool IsWaitRunning()
-    // {
-    //     return _waitRunning;
-    // }
-
     public static  ConcurrentDictionary<string, ConnectedSlavesData> GetConnectedSlaves()
     {
         return SlavesStream;
     }
-    
-    // public static void StartWaitRunning()
-    // {
-    //     _waitRunning = true;
-    // }
     
     public static void SlaveConnected(TcpClient client)
     {

@@ -38,7 +38,6 @@ public class Wait
             {
                 NetworkStream stream = client.Value.TcpClient.GetStream();
                 await stream.WriteAsync(Encoding.ASCII.GetBytes(BuildResponse.Generate('*', _replconf)));
-                //await stream.FlushAsync(); // Ensure data is flushed
             }catch (Exception e)
             {
                 Console.WriteLine($"failed to wait: {e.Message}");
