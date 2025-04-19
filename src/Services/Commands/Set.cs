@@ -1,3 +1,4 @@
+using System.Net.Sockets;
 using codecrafters_redis.Helpers;
 using codecrafters_redis.Repositories.Interfaces;
 
@@ -13,7 +14,7 @@ public class Set
         _storeRepository = storeRepository ?? throw new ArgumentNullException(nameof(storeRepository));
     }
 
-    public string SetCommand(string? key, string? data, DateTime? ttl)
+    public string SetCommand(TcpClient client, string? key, string? data, DateTime? ttl)
     {
         if (key == null || data == null)
         {
@@ -22,14 +23,13 @@ public class Set
         Console.WriteLine($"!set!! added {Config.GetCounter()} {data.Length + key.Length + NumberOfStandardSetCharacters + data.Length.ToString().Length + key.Length.ToString().Length}");
         Config.IncrementCounter(data.Trim().Length + key.Trim().Length + NumberOfStandardSetCharacters + data.Trim().Length.ToString().Length + key.Trim().Length.ToString().Length);
         _storeRepository.Add(key, data, ttl);
+        
         if(!Config.IsReplicaOf)
         {
             SyncHelper.SyncCommand($"set {key} {data} {ttl}");
             return BuildResponse.Generate('+', "OK");
         }
-        else // ToDo do not respond only when master sync with slave
-        {
-            return "";
-        }
+        // ToDo do not respond only when master sync with slave
+        return "";
     }
 }

@@ -19,15 +19,17 @@ public class SyncMasterSlave
             var tmp = 35 + counterValue.ToString().Length + counterValue.ToString().Length.ToString().Length;
             Console.WriteLine($"GETACK 2 !!!: {counterValue} ({tmp + counterValue})");
             Config.IncrementCounter(tmp);
-            
             return BuildResponse.Generate('*', res);
         }
 
         try
         {
             SyncHelper.SlaveConnected(client);
-            SyncHelper.WaitAckCounterIncr();
-            Console.WriteLine($"========== increase! {SyncHelper.GetWaitAckCounter()}");
+            if (Config.GetIsWait())
+            {
+                Config.IncrementAckCounter();
+                return "";
+            }
             return BuildResponse.Generate('+', "OK");
         }
         catch (Exception e)
@@ -56,8 +58,7 @@ public class SyncMasterSlave
     {
         var masterRedisNodeHost = Config.MasterRedisNode.Split(" ")[0];
         var masterRedisNodePort = int.Parse(Config.MasterRedisNode.Split(" ")[1]);
-        var GETACKOnese = false;
-        
+
         if (masterRedisNodeHost.Length == 0 || masterRedisNodePort == 0)
         {
             Console.WriteLine("Master redis node host or port is empty");
@@ -89,21 +90,23 @@ public class SyncMasterSlave
                     var listeningPortData = Encoding.ASCII.GetBytes(BuildResponse.Generate('*', listeningPort));
                     Config.IsSyncHandshakeActive = true;
                     stream.Write(listeningPortData, 0, listeningPortData.Length);
-                } 
+                }
+
                 if (responseData[0] == '*')
                 {
                     foreach (var command in responseData.Split("*")[1..])
                     {
                         if (command.ToUpper().Contains("REPLCONF")) continue;
-                        Console.WriteLine($"    command: {command}");
+                        Console.WriteLine($"command: {command}");
                         CommandService.ParseCommand(serviceProvider, client,
                             $"*{command}".Split("\r\n", StringSplitOptions.RemoveEmptyEntries));
                     }
                 }
+
                 if (responseData.Contains("GETACK", StringComparison.OrdinalIgnoreCase))
                 {
-                    System.Threading.Thread.Sleep(300);   
-                    byte[] ackMessage; 
+                    // System.Threading.Thread.Sleep(300);   
+                    byte[] ackMessage;
                     var counterValue = Config.GetCounter();
                     ackMessage = Encoding.ASCII.GetBytes(BuildResponse.Generate('*',
                         $"3\r\n$8\r\nREPLCONF\r\n$3\r\nACK\r\n${counterValue.ToString().Length}\r\n{counterValue}\r\n"));
@@ -123,8 +126,9 @@ public class SyncMasterSlave
                     var psyncData = Encoding.ASCII.GetBytes(BuildResponse.Generate('*', psync));
                     stream.Write(psyncData, 0, psyncData.Length);
                 }
-
             }
+
+            SyncHelper.FinishFullSync = true;
         }
         catch (Exception e)
         {

@@ -44,7 +44,7 @@ public static class CommandService
             "PING" => serviceProvider.GetRequiredKeyedService<Ping>(null).PingCommand(),
             "ECHO" => BuildResponse.Generate(argumentForCommand != null ? '$' : '-',
                 argumentForCommand ?? "wrong number of arguments for 'echo' command"),
-            "SET" => serviceProvider.GetRequiredKeyedService<Set>(null).SetCommand(argumentForCommand, arrayStrings.ElementAtOrDefault(6), ttl),
+            "SET" => serviceProvider.GetRequiredKeyedService<Set>(null).SetCommand(client, argumentForCommand, arrayStrings.ElementAtOrDefault(6), ttl),
             "GET" => serviceProvider.GetRequiredKeyedService<Get>(null).GetCommand(argumentForCommand),
             "CONFIG" => serviceProvider.GetRequiredKeyedService<Config>(null).ConfigCmd(argumentForCommand ?? "", arrayStrings.ElementAtOrDefault(6) ?? ""),
             "KEYS" => serviceProvider.GetRequiredKeyedService<Keys>(null).GetKeys(argumentForCommand),
@@ -59,7 +59,7 @@ public static class CommandService
             "INFO" => serviceProvider.GetRequiredKeyedService<Info>(null).InfoCommand(arrayStrings[4..]),
             "REPLCONF" => serviceProvider.GetRequiredKeyedService<SyncMasterSlave>(null).REPLCONFCommand(client,arrayStrings[4..]),
             "PSYNC" => serviceProvider.GetRequiredKeyedService<SyncMasterSlave>(null).MasterPsync(client),
-            "WAIT" => serviceProvider.GetRequiredKeyedService<Wait>(null).WaitCommand(client, arrayStrings[4..]),
+            "WAIT" => serviceProvider.GetRequiredKeyedService<Wait>(null).WaitCommand(arrayStrings[4..]).Result,
             _ => BuildResponse.Generate('+', "UNKNOWN")
         };
     }

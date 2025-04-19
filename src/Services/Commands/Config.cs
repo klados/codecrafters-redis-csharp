@@ -11,8 +11,51 @@ public class Config
     public static string MasterRedisNode = "";
     
     private static readonly object _lockObject = new object();
+    private static readonly object _ackLock = new object();
+    private static bool _isWait = false;
     private static int _bytesSent = 0;
+    private static int _ackCounter = 0;
     public static bool IsSyncHandshakeActive = false;
+
+    public static int GetAckCounter()
+    {
+        lock (_ackLock)
+        {
+            return _ackCounter;
+        }
+    }
+    
+    public static void IncrementAckCounter()
+    {
+        lock (_ackLock)
+        {
+            _ackCounter += 1;
+        }
+    }
+
+    public static void ResetAckCounter()
+    {
+        lock (_ackLock)
+        {
+            _ackCounter = 0;
+        }
+    }
+    
+    public static bool GetIsWait()
+    {
+        lock (_lockObject)
+        {
+            return _isWait;
+        }
+    }
+    
+    public static void SetIsWait(bool isWait)
+    {
+        lock (_lockObject)
+        {
+            _isWait = isWait;
+        }
+    }
     
     public static int GetCounter()
     {
